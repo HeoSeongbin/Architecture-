@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import {
   Background,
   BackgroundVariant,
+  ConnectionMode,
   Controls,
   MiniMap,
   ReactFlow,
@@ -59,6 +60,7 @@ export function ArchitectureCanvas() {
       <ReactFlow
         className="architecture-flow"
         colorMode="light"
+        connectionMode={ConnectionMode.Loose}
         deleteKeyCode={['Backspace', 'Delete']}
         edges={edges}
         fitView
