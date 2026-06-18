@@ -2,12 +2,26 @@ import base64 from 'base-64';
 import { deflate, inflate } from 'pako';
 import type {
   ArchitectureEdge,
+  ArchitectureEdgeData,
   ArchitectureNode,
   GraphState,
   MinifiedEdge,
   MinifiedGraph,
   MinifiedNode,
 } from '../types/graph';
+import { getEdgeVisuals } from './edgeUtils';
+
+const minifyDirection = (direction?: ArchitectureEdgeData['direction']) => {
+  if (direction === 'reverse') return 'r';
+  if (direction === 'bidirectional') return 'b';
+  return undefined;
+};
+
+const expandDirection = (direction?: MinifiedEdge['d']): ArchitectureEdgeData['direction'] => {
+  if (direction === 'r') return 'reverse';
+  if (direction === 'b') return 'bidirectional';
+  return 'forward';
+};
 
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
@@ -46,6 +60,7 @@ const minifyGraph = (state: GraphState): MinifiedGraph => ({
     s: edge.source,
     t: edge.target,
     ...(edge.data?.label ? { l: edge.data.label } : {}),
+    ...(minifyDirection(edge.data?.direction) ? { d: minifyDirection(edge.data?.direction) } : {}),
   })),
 });
 
@@ -56,20 +71,18 @@ const expandGraph = (graph: MinifiedGraph): GraphState => ({
     position: { x: node.p[0], y: node.p[1] },
     data: node.d,
   })),
-  edges: graph.e.map<ArchitectureEdge>((edge) => ({
-    id: edge.i,
-    source: edge.s,
-    target: edge.t,
-    data: { label: edge.l },
-    label: edge.l,
-    animated: true,
-    type: 'smoothstep',
-    labelBgPadding: [8, 4],
-    labelBgBorderRadius: 4,
-    labelBgStyle: { fill: '#ffffff', fillOpacity: 0.92 },
-    labelStyle: { fill: '#334155', fontSize: 12, fontWeight: 600 },
-    style: { stroke: '#475569', strokeWidth: 2 },
-  })),
+  edges: graph.e.map<ArchitectureEdge>((edge) => {
+    const data: ArchitectureEdgeData = { direction: expandDirection(edge.d), label: edge.l };
+
+    return {
+      id: edge.i,
+      source: edge.s,
+      target: edge.t,
+      data,
+      label: edge.l,
+      ...getEdgeVisuals(data),
+    };
+  }),
 });
 
 export const encodeStateToUrl = (state: GraphState) => {

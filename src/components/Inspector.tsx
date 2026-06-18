@@ -1,8 +1,14 @@
-import { CopyPlus, GitBranch, Palette, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowLeftRight, ArrowRight, CopyPlus, GitBranch, Palette, Trash2 } from 'lucide-react';
 import { useMemo } from 'react';
 import { useGraphStore } from '../store/useGraphStore';
 
 const accentOptions = ['#2563eb', '#dc2626', '#0f766e', '#0284c7', '#16a34a', '#ea580c', '#65a30d', '#7c3aed', '#0891b2'];
+
+const directionOptions = [
+  { value: 'forward', label: 'Forward', Icon: ArrowRight },
+  { value: 'reverse', label: 'Reverse', Icon: ArrowLeft },
+  { value: 'bidirectional', label: 'Both', Icon: ArrowLeftRight },
+] as const;
 
 export function Inspector() {
   const selectedNodeId = useGraphStore((state) => state.selectedNodeId);
@@ -117,6 +123,25 @@ export function Inspector() {
             placeholder="HTTP, JDBC, Queue, Proxy"
             value={selectedEdge.data?.label ?? ''}
           />
+
+          <div className="field-label">Direction</div>
+          <div className="grid grid-cols-3 gap-2">
+            {directionOptions.map(({ value, label, Icon }) => {
+              const isSelected = (selectedEdge.data?.direction ?? 'forward') === value;
+
+              return (
+                <button
+                  className={`secondary-button justify-center px-2 ${isSelected ? 'border-slate-900 bg-slate-100 text-slate-950' : ''}`}
+                  key={value}
+                  onClick={() => updateEdgeData(selectedEdge.id, { direction: value })}
+                  type="button"
+                >
+                  <Icon size={16} aria-hidden />
+                  <span>{label}</span>
+                </button>
+              );
+            })}
+          </div>
 
           <div className="mt-6">
             <button className="danger-button w-full" onClick={() => deleteEdge(selectedEdge.id)} type="button">

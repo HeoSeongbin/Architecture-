@@ -1,14 +1,5 @@
 import type { ArchitectureEdge, ArchitectureNode, GraphState } from '../types/graph';
-
-const edgeDefaults = {
-  animated: true,
-  type: 'smoothstep',
-  labelBgPadding: [8, 4] as [number, number],
-  labelBgBorderRadius: 4,
-  labelBgStyle: { fill: '#ffffff', fillOpacity: 0.92 },
-  labelStyle: { fill: '#334155', fontSize: 12, fontWeight: 600 },
-  style: { stroke: '#475569', strokeWidth: 2 },
-};
+import { getEdgeVisuals } from './edgeUtils';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -54,14 +45,18 @@ const normalizeEdge = (value: unknown, nodeIds: Set<string>): ArchitectureEdge |
   if (!nodeIds.has(value.source) || !nodeIds.has(value.target)) return null;
 
   const label = isRecord(value.data) && typeof value.data.label === 'string' ? value.data.label : undefined;
+  const rawDirection = isRecord(value.data) && typeof value.data.direction === 'string' ? value.data.direction : undefined;
+  const direction =
+    rawDirection === 'reverse' || rawDirection === 'bidirectional' || rawDirection === 'forward' ? rawDirection : 'forward';
+  const data: ArchitectureEdge['data'] = { direction, label };
 
   return {
     id: value.id,
     source: value.source,
     target: value.target,
-    data: { label },
+    data,
     label,
-    ...edgeDefaults,
+    ...getEdgeVisuals(data),
   };
 };
 
@@ -86,8 +81,8 @@ export const toExportableGraph = (graph: GraphState): GraphState => ({
     id: edge.id,
     source: edge.source,
     target: edge.target,
-    data: { label: edge.data?.label },
+    data: { direction: edge.data?.direction ?? 'forward', label: edge.data?.label },
     label: edge.data?.label,
-    ...edgeDefaults,
+    ...getEdgeVisuals(edge.data),
   })),
 });

@@ -1,5 +1,6 @@
 import { architectureAssets } from './assets';
 import type { ArchitectureEdge, ArchitectureNode, ArchitectureNodeKind, GraphState } from '../types/graph';
+import { getEdgeVisuals } from '../utils/edgeUtils';
 
 const assetByKind = new Map(architectureAssets.map((asset) => [asset.kind, asset]));
 
@@ -21,15 +22,9 @@ const makeEdge = (source: string, target: string, label: string): ArchitectureEd
   id: `edge-${source}-${target}`,
   source,
   target,
-  data: { label },
+  data: { direction: 'forward', label },
   label,
-  animated: true,
-  type: 'smoothstep',
-  labelBgPadding: [8, 4],
-  labelBgBorderRadius: 4,
-  labelBgStyle: { fill: '#ffffff', fillOpacity: 0.92 },
-  labelStyle: { fill: '#334155', fontSize: 12, fontWeight: 600 },
-  style: { stroke: '#475569', strokeWidth: 2 },
+  ...getEdgeVisuals({ direction: 'forward', label }),
 });
 
 export const sampleGraph: GraphState = {

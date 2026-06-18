@@ -32,6 +32,7 @@ export interface ArchitectureNodeData extends Record<string, unknown> {
 }
 
 export interface ArchitectureEdgeData extends Record<string, unknown> {
+  direction?: 'forward' | 'reverse' | 'bidirectional';
   label?: string;
 }
 
@@ -55,6 +56,7 @@ export interface MinifiedEdge {
   s: string;
   t: string;
   l?: string;
+  d?: 'r' | 'b';
 }
 
 export interface MinifiedGraph {

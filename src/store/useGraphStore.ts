@@ -8,6 +8,7 @@ import {
   type NodeChange,
 } from '@xyflow/react';
 import type { ArchitectureEdge, ArchitectureNode, GraphState } from '../types/graph';
+import { getEdgeVisuals } from '../utils/edgeUtils';
 
 const HISTORY_LIMIT = 80;
 
@@ -126,6 +127,7 @@ export const useGraphStore = create<GraphStore>((set) => ({
             ...edge,
             data: nextData,
             label: nextData.label,
+            ...getEdgeVisuals(nextData),
           };
         }),
         canUndo: pastState.past.length > 0,
@@ -333,14 +335,8 @@ export const useGraphStore = create<GraphStore>((set) => ({
           {
             ...connection,
             id: `edge-${connection.source}-${connection.target}-${crypto.randomUUID().slice(0, 8)}`,
-            data: { label: '' },
-            animated: true,
-            type: 'smoothstep',
-            labelBgPadding: [8, 4],
-            labelBgBorderRadius: 4,
-            labelBgStyle: { fill: '#ffffff', fillOpacity: 0.92 },
-            labelStyle: { fill: '#334155', fontSize: 12, fontWeight: 600 },
-            style: { stroke: '#475569', strokeWidth: 2 },
+            data: { direction: 'forward', label: '' },
+            ...getEdgeVisuals({ direction: 'forward', label: '' }),
           },
           state.edges,
         ),
