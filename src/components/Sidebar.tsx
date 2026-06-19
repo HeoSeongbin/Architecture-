@@ -9,6 +9,17 @@ const categoryIcon = {
   Application: Layers3,
   Cloud: Cloud,
   Network: Network,
+  Group: Layers3,
+};
+
+const groupAsset: ArchitectureNodeData = {
+  kind: 'group',
+  label: 'Group Card',
+  subtitle: 'Drag nodes into this area',
+  category: 'Group',
+  accent: '#475569',
+  isGroup: true,
+  note: 'Use this to mark client, gateway, backend, event, data, or any custom boundary.',
 };
 
 export function Sidebar() {
@@ -57,6 +68,26 @@ export function Sidebar() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4">
+        <section className="mb-5">
+          <div className="mb-2 flex items-center gap-2 px-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <Layers3 size={14} aria-hidden />
+            <span>Diagram Groups</span>
+          </div>
+          <button
+            className="asset-button group-asset-button"
+            draggable
+            onDragStart={(event) => onDragStart(event, groupAsset)}
+            style={{ borderLeftColor: groupAsset.accent }}
+            type="button"
+          >
+            <span className="asset-swatch group-asset-swatch" style={{ backgroundColor: groupAsset.accent }} />
+            <span className="min-w-0 text-left">
+              <span className="block truncate text-sm font-medium">{groupAsset.label}</span>
+              <span className="block truncate text-xs text-slate-500">{groupAsset.subtitle}</span>
+            </span>
+          </button>
+        </section>
+
         {filteredAssets.length === 0 ? (
           <div className="px-2 py-8 text-center text-sm text-slate-500">No matching assets.</div>
         ) : null}

@@ -20,14 +20,16 @@ export type ArchitectureNodeKind =
   | 'gcp'
   | 'loadbalancer'
   | 'firewall'
-  | 'queue';
+  | 'queue'
+  | 'group';
 
 export interface ArchitectureNodeData extends Record<string, unknown> {
   kind: ArchitectureNodeKind;
   label: string;
   subtitle: string;
-  category: 'Database' | 'Server' | 'Application' | 'Cloud' | 'Network';
+  category: 'Database' | 'Server' | 'Application' | 'Cloud' | 'Network' | 'Group';
   accent: string;
+  isGroup?: boolean;
   note?: string;
 }
 
@@ -45,7 +47,7 @@ export interface ArchitectureEdgeData extends Record<string, unknown> {
   showEndpoints?: boolean;
 }
 
-export type ArchitectureNode = Node<ArchitectureNodeData, 'architectureNode'>;
+export type ArchitectureNode = Node<ArchitectureNodeData, 'architectureNode' | 'groupNode'>;
 export type ArchitectureEdge = Edge<ArchitectureEdgeData, 'architectureEdge'>;
 
 export interface GraphState {
@@ -58,6 +60,10 @@ export interface MinifiedNode {
   t: string;
   p: [number, number];
   d: ArchitectureNodeData;
+  g?: string;
+  e?: 1;
+  w?: number;
+  h?: number;
 }
 
 export interface MinifiedEdge {

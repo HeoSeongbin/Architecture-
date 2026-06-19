@@ -35,6 +35,7 @@ const iconByKind = {
   loadbalancer: SplitSquareHorizontal,
   firewall: Shield,
   queue: Workflow,
+  group: Server,
 };
 
 const connectionHandles = [

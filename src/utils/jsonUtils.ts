@@ -22,9 +22,13 @@ const normalizeNode = (value: unknown): ArchitectureNode | null => {
     return null;
   }
 
+  const width = isRecord(value.style) && typeof value.style.width === 'number' ? value.style.width : undefined;
+  const height = isRecord(value.style) && typeof value.style.height === 'number' ? value.style.height : undefined;
+  const type = value.type === 'groupNode' || data.kind === 'group' || data.isGroup === true ? 'groupNode' : 'architectureNode';
+
   return {
     id: value.id,
-    type: 'architectureNode',
+    type,
     position: { x: position.x, y: position.y },
     data: {
       kind: data.kind as ArchitectureNode['data']['kind'],
@@ -32,8 +36,12 @@ const normalizeNode = (value: unknown): ArchitectureNode | null => {
       subtitle: data.subtitle,
       category: data.category as ArchitectureNode['data']['category'],
       accent: data.accent,
+      ...(data.isGroup === true ? { isGroup: true } : {}),
       ...(typeof data.note === 'string' ? { note: data.note } : {}),
     },
+    ...(typeof value.parentId === 'string' ? { parentId: value.parentId } : {}),
+    ...(value.extent === 'parent' ? { extent: 'parent' as const } : {}),
+    ...(width || height ? { style: { width: width ?? 520, height: height ?? 320 } } : {}),
   };
 };
 
@@ -83,12 +91,22 @@ export const normalizeImportedGraph = (value: unknown): GraphState | null => {
 };
 
 export const toExportableGraph = (graph: GraphState): GraphState => ({
-  nodes: graph.nodes.map((node) => ({
-    id: node.id,
-    type: 'architectureNode',
-    position: node.position,
-    data: node.data,
-  })),
+  nodes: graph.nodes.map((node) => {
+    const styleWidth = typeof node.style?.width === 'number' ? node.style.width : node.width;
+    const styleHeight = typeof node.style?.height === 'number' ? node.style.height : node.height;
+
+    return {
+      id: node.id,
+      type: node.type ?? 'architectureNode',
+      position: node.position,
+      ...(node.parentId ? { parentId: node.parentId } : {}),
+      ...(node.extent === 'parent' ? { extent: node.extent } : {}),
+      ...(node.style || styleWidth || styleHeight
+        ? { style: { ...node.style, width: styleWidth ?? node.style?.width, height: styleHeight ?? node.style?.height } }
+        : {}),
+      data: node.data,
+    };
+  }),
   edges: graph.edges.map((edge) => ({
     id: edge.id,
     source: edge.source,

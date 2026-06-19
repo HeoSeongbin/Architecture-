@@ -85,6 +85,10 @@ const minifyGraph = (state: GraphState): MinifiedGraph => ({
     t: node.type ?? 'architectureNode',
     p: [Math.round(node.position.x), Math.round(node.position.y)],
     d: node.data,
+    ...(node.parentId ? { g: node.parentId } : {}),
+    ...(node.extent === 'parent' ? { e: 1 as const } : {}),
+    ...(typeof (node.style?.width ?? node.width) === 'number' ? { w: Math.round(Number(node.style?.width ?? node.width)) } : {}),
+    ...(typeof (node.style?.height ?? node.height) === 'number' ? { h: Math.round(Number(node.style?.height ?? node.height)) } : {}),
   })),
   e: state.edges.map<MinifiedEdge>((edge) => ({
     i: edge.id,
@@ -105,9 +109,12 @@ const minifyGraph = (state: GraphState): MinifiedGraph => ({
 const expandGraph = (graph: MinifiedGraph): GraphState => {
   const nodes = graph.n.map<ArchitectureNode>((node) => ({
     id: node.i,
-    type: 'architectureNode',
+    type: node.t === 'groupNode' ? 'groupNode' : 'architectureNode',
     position: { x: node.p[0], y: node.p[1] },
     data: node.d,
+    ...(node.g ? { parentId: node.g } : {}),
+    ...(node.e === 1 ? { extent: 'parent' as const } : {}),
+    ...(node.w || node.h ? { style: { width: node.w ?? 520, height: node.h ?? 320 } } : {}),
   }));
 
   const edges = graph.e.map<ArchitectureEdge>((edge) => {

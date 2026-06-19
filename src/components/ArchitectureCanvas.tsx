@@ -1,4 +1,5 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
+import type { CSSProperties } from 'react';
 import {
   Background,
   BackgroundVariant,
@@ -7,78 +8,68 @@ import {
   MiniMap,
   ReactFlow,
   useReactFlow,
-  ViewportPortal,
   type EdgeTypes,
   type NodeTypes,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { ArchitectureEdge } from './CustomEdges/ArchitectureEdge';
 import { ArchitectureNodeCard } from './CustomNodes/ArchitectureNodeCard';
+import { GroupNodeCard } from './CustomNodes/GroupNodeCard';
 import { useGraphStore } from '../store/useGraphStore';
 import type { ArchitectureNode, ArchitectureNodeData } from '../types/graph';
 
 const nodeTypes: NodeTypes = {
   architectureNode: ArchitectureNodeCard,
+  groupNode: GroupNodeCard,
 };
 
 const edgeTypes: EdgeTypes = {
   architectureEdge: ArchitectureEdge,
 };
 
-const laneLabels = ['Client', 'Gateway', 'Backend', 'Services', 'Events', 'Data', 'Cloud'];
-
-const getLaneIndex = (node: ArchitectureNode) => {
-  const text = `${node.data.kind} ${node.data.category} ${node.data.label} ${node.data.subtitle} ${node.data.note ?? ''}`.toLowerCase();
-
-  if (/\b(front|frontend|react|ui|browser|client)\b/.test(text)) return 0;
-  if (/\b(api client|proxy|gateway|entry|nginx|load balancer|loadbalancer|firewall)\b/.test(text)) return 1;
-  if (/\b(backend|api|server|docker|container|wsl|runtime)\b/.test(text)) return 2;
-  if (/\b(service|controller|common|security|auth|admin|customer|project|document|role|user)\b/.test(text)) return 3;
-  if (/\b(queue|event|topic|stream|notification|audit|batch|worker|scheduler)\b/.test(text)) return 4;
-  if (/\b(db|database|mssql|oracle|mariadb|postgres|mongodb|redis|storage|file|table|seaweed)\b/.test(text)) return 5;
-  if (/\b(aws|azure|gcp|cloud|external|third-party|third party)\b/.test(text)) return 6;
-
-  if (node.data.category === 'Database') return 5;
-  if (node.data.category === 'Cloud') return 6;
-  if (node.data.category === 'Network') return 1;
-  if (node.data.category === 'Server') return 2;
-  return 3;
+const defaultGroupSize = {
+  height: 320,
+  width: 520,
 };
+
+const getNodeSize = (node: ArchitectureNode) => ({
+  height: Number(node.height ?? node.measured?.height ?? (node.style as CSSProperties | undefined)?.height ?? defaultGroupSize.height),
+  width: Number(node.width ?? node.measured?.width ?? (node.style as CSSProperties | undefined)?.width ?? defaultGroupSize.width),
+});
+
+const getAbsolutePosition = (node: ArchitectureNode, nodes: ArchitectureNode[]): { x: number; y: number } => {
+  if (!node.parentId) return node.position;
+  const parent = nodes.find((item) => item.id === node.parentId);
+  if (!parent) return node.position;
+  const parentPosition = getAbsolutePosition(parent, nodes);
+  return { x: parentPosition.x + node.position.x, y: parentPosition.y + node.position.y };
+};
+
+const findGroupAtPosition = (position: { x: number; y: number }, nodes: ArchitectureNode[]) =>
+  nodes
+    .filter((node) => node.type === 'groupNode' || node.data.isGroup)
+    .find((group) => {
+      const groupPosition = getAbsolutePosition(group, nodes);
+      const size = getNodeSize(group);
+      return (
+        position.x >= groupPosition.x &&
+        position.x <= groupPosition.x + size.width &&
+        position.y >= groupPosition.y &&
+        position.y <= groupPosition.y + size.height
+      );
+    });
 
 export function ArchitectureCanvas() {
   const { screenToFlowPosition } = useReactFlow();
   const nodes = useGraphStore((state) => state.nodes);
   const edges = useGraphStore((state) => state.edges);
   const addNode = useGraphStore((state) => state.addNode);
+  const assignNodeToGroup = useGraphStore((state) => state.assignNodeToGroup);
   const onNodesChange = useGraphStore((state) => state.onNodesChange);
   const onEdgesChange = useGraphStore((state) => state.onEdgesChange);
   const onConnect = useGraphStore((state) => state.onConnect);
   const selectNode = useGraphStore((state) => state.selectNode);
   const selectEdge = useGraphStore((state) => state.selectEdge);
-  const lanes = useMemo(() => {
-    const grouped = new Map<number, ArchitectureNode[]>();
-
-    nodes.forEach((node) => {
-      const lane = getLaneIndex(node);
-      grouped.set(lane, [...(grouped.get(lane) ?? []), node]);
-    });
-
-    return Array.from(grouped.entries()).map(([lane, laneNodes]) => {
-      const minX = Math.min(...laneNodes.map((node) => node.position.x));
-      const maxX = Math.max(...laneNodes.map((node) => node.position.x));
-      const minY = Math.min(...laneNodes.map((node) => node.position.y));
-      const maxY = Math.max(...laneNodes.map((node) => node.position.y));
-
-      return {
-        height: Math.max(220, maxY - minY + 220),
-        label: laneLabels[lane] ?? 'Layer',
-        width: Math.max(280, maxX - minX + 280),
-        x: minX - 40,
-        y: minY - 70,
-      };
-    });
-  }, [nodes]);
-
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
@@ -93,16 +84,22 @@ export function ArchitectureCanvas() {
 
       const asset = JSON.parse(rawAsset) as ArchitectureNodeData;
       const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+      const isGroup = asset.isGroup || asset.kind === 'group';
+      const parentGroup = isGroup ? undefined : findGroupAtPosition(position, nodes);
+      const parentPosition = parentGroup ? getAbsolutePosition(parentGroup, nodes) : undefined;
       const node: ArchitectureNode = {
         id: `${asset.kind}-${crypto.randomUUID().slice(0, 8)}`,
-        type: 'architectureNode',
-        position,
+        type: isGroup ? 'groupNode' : 'architectureNode',
+        position: parentPosition ? { x: position.x - parentPosition.x, y: position.y - parentPosition.y } : position,
         data: asset,
+        zIndex: isGroup ? 0 : 1,
+        ...(isGroup ? { style: defaultGroupSize } : {}),
+        ...(parentGroup ? { parentId: parentGroup.id } : {}),
       };
 
       addNode(node);
     },
-    [addNode, screenToFlowPosition],
+    [addNode, nodes, screenToFlowPosition],
   );
 
   return (
@@ -122,6 +119,7 @@ export function ArchitectureCanvas() {
         onDragOver={onDragOver}
         onDrop={onDrop}
         onEdgesChange={onEdgesChange}
+        onNodeDragStop={(_, node) => assignNodeToGroup(node.id)}
         onNodesChange={onNodesChange}
         onSelectionChange={({ nodes: selectedNodes, edges: selectedEdges }) => {
           const selectedNodeId = selectedNodes[0]?.id ?? null;
@@ -129,17 +127,6 @@ export function ArchitectureCanvas() {
           selectEdge(selectedNodeId ? null : (selectedEdges[0]?.id ?? null));
         }}
       >
-        <ViewportPortal>
-          {lanes.map((lane) => (
-            <div
-              className="architecture-lane"
-              key={`${lane.label}-${lane.x}-${lane.y}`}
-              style={{ height: lane.height, transform: `translate(${lane.x}px, ${lane.y}px)`, width: lane.width }}
-            >
-              <div className="architecture-lane-label">{lane.label}</div>
-            </div>
-          ))}
-        </ViewportPortal>
         <Background color="#cbd5e1" gap={22} size={1.4} variant={BackgroundVariant.Dots} />
         <Controls position="bottom-right" />
         <MiniMap

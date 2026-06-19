@@ -7,6 +7,7 @@ import {
   type EdgeChange,
   type NodeChange,
 } from '@xyflow/react';
+import type { CSSProperties } from 'react';
 import ELK from 'elkjs/lib/elk.bundled.js';
 import type { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk-api';
 import type { ArchitectureEdge, ArchitectureEdgeData, ArchitectureNode, GraphState } from '../types/graph';
@@ -123,6 +124,93 @@ const clearEdgeRoutes = (edges: ArchitectureEdge[]) =>
     data: { ...edge.data, routePoints: undefined },
   }));
 
+const isGroupNode = (node: ArchitectureNode) => node.type === 'groupNode' || node.data.isGroup === true || node.data.kind === 'group';
+
+const defaultGroupSize = {
+  height: 320,
+  width: 520,
+};
+
+const getNodeSize = (node: ArchitectureNode) => ({
+  height: Number(node.height ?? node.measured?.height ?? (node.style as CSSProperties | undefined)?.height ?? defaultGroupSize.height),
+  width: Number(node.width ?? node.measured?.width ?? (node.style as CSSProperties | undefined)?.width ?? defaultGroupSize.width),
+});
+
+const getAbsolutePosition = (node: ArchitectureNode, nodes: ArchitectureNode[]): { x: number; y: number } => {
+  if (!node.parentId) return node.position;
+  const parent = nodes.find((item) => item.id === node.parentId);
+  if (!parent) return node.position;
+  const parentPosition = getAbsolutePosition(parent, nodes);
+  return { x: parentPosition.x + node.position.x, y: parentPosition.y + node.position.y };
+};
+
+const findContainingGroup = (node: ArchitectureNode, nodes: ArchitectureNode[]) => {
+  if (isGroupNode(node)) return undefined;
+
+  const absolutePosition = getAbsolutePosition(node, nodes);
+  const nodeSize = getNodeSize(node);
+  const center = {
+    x: absolutePosition.x + nodeSize.width / 2,
+    y: absolutePosition.y + nodeSize.height / 2,
+  };
+
+  return nodes
+    .filter((item) => isGroupNode(item) && item.id !== node.id)
+    .sort((first, second) => {
+      const firstSize = getNodeSize(first);
+      const secondSize = getNodeSize(second);
+      return firstSize.width * firstSize.height - secondSize.width * secondSize.height;
+    })
+    .find((group) => {
+      const groupPosition = getAbsolutePosition(group, nodes);
+      const groupSize = getNodeSize(group);
+
+      return (
+        center.x >= groupPosition.x &&
+        center.x <= groupPosition.x + groupSize.width &&
+        center.y >= groupPosition.y &&
+        center.y <= groupPosition.y + groupSize.height
+      );
+    });
+};
+
+const syncNodeGroup = (nodeId: string, nodes: ArchitectureNode[]) => {
+  const node = nodes.find((item) => item.id === nodeId);
+  if (!node || isGroupNode(node)) return nodes;
+
+  const absolutePosition = getAbsolutePosition(node, nodes);
+  const group = findContainingGroup(node, nodes);
+
+  if (!group && !node.parentId) return nodes;
+  if (group?.id === node.parentId) return nodes;
+
+  return nodes.map((item) => {
+    if (item.id !== nodeId) return item;
+
+    if (!group) {
+      const { parentId: _parentId, extent: _extent, ...rest } = item;
+      return {
+        ...rest,
+        position: absolutePosition,
+      };
+    }
+
+    const groupPosition = getAbsolutePosition(group, nodes);
+    const { extent: _extent, ...rest } = item;
+
+    return {
+      ...rest,
+      parentId: group.id,
+      position: { x: absolutePosition.x - groupPosition.x, y: absolutePosition.y - groupPosition.y },
+    };
+  });
+};
+
+const orderNodesForGroups = (nodes: ArchitectureNode[]) => [
+  ...nodes.filter(isGroupNode),
+  ...nodes.filter((node) => !isGroupNode(node)),
+];
+
 const elk = new ELK();
 
 const toElkGraph = (nodes: ArchitectureNode[], edges: ArchitectureEdge[]): ElkNode => {
@@ -211,6 +299,7 @@ interface GraphStore extends GraphState {
   setGraph: (graph: GraphState) => void;
   replaceGraph: (graph: GraphState) => void;
   addNode: (node: ArchitectureNode) => void;
+  assignNodeToGroup: (nodeId: string) => void;
   selectNode: (nodeId: string | null) => void;
   selectEdge: (edgeId: string | null) => void;
   updateNodeData: (nodeId: string, data: Partial<ArchitectureNode['data']>) => void;
@@ -244,7 +333,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
     const presentedGraph = presentGraph(graph);
 
     return set({
-      nodes: presentedGraph.nodes,
+      nodes: orderNodesForGroups(presentedGraph.nodes),
       edges: presentedGraph.edges,
       selectedNodeId: null,
       selectedEdgeId: null,
@@ -261,7 +350,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
 
       return {
         ...pastState,
-        nodes: presentedGraph.nodes,
+        nodes: orderNodesForGroups(presentedGraph.nodes),
         edges: presentedGraph.edges,
         selectedNodeId: null,
         selectedEdgeId: null,
@@ -274,9 +363,25 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       const pastState = pushHistory(state);
       return {
         ...pastState,
-        nodes: [...state.nodes, node],
+        nodes: orderNodesForGroups([...state.nodes, node]),
         selectedNodeId: node.id,
         selectedEdgeId: null,
+        canUndo: pastState.past.length > 0,
+        canRedo: false,
+      };
+    }),
+  assignNodeToGroup: (nodeId) =>
+    set((state) => {
+      const syncedNodes = syncNodeGroup(nodeId, state.nodes);
+      if (syncedNodes === state.nodes) return state;
+      const nodes = orderNodesForGroups(syncedNodes);
+
+      const pastState = pushHistory(state);
+
+      return {
+        ...pastState,
+        nodes,
+        edges: presentGraph({ nodes, edges: clearEdgeRoutes(state.edges) }).edges,
         canUndo: pastState.past.length > 0,
         canRedo: false,
       };
@@ -392,7 +497,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
 
       return {
         ...pastState,
-        nodes: [...state.nodes.map((item) => ({ ...item, selected: false })), duplicate],
+        nodes: orderNodesForGroups([...state.nodes.map((item) => ({ ...item, selected: false })), duplicate]),
         selectedNodeId: duplicate.id,
         selectedEdgeId: null,
         canUndo: pastState.past.length > 0,
@@ -401,12 +506,26 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
     }),
   deleteNode: (nodeId) =>
     set((state) => {
-      if (!state.nodes.some((node) => node.id === nodeId)) return state;
+      const nodeToDelete = state.nodes.find((node) => node.id === nodeId);
+      if (!nodeToDelete) return state;
 
       const pastState = pushHistory(state);
+      const nodes = orderNodesForGroups(state.nodes
+        .filter((node) => node.id !== nodeId)
+        .map((node) => {
+          if (node.parentId !== nodeId) return node;
+
+          const absolutePosition = getAbsolutePosition(node, state.nodes);
+          const { parentId: _parentId, extent: _extent, ...rest } = node;
+          return {
+            ...rest,
+            position: absolutePosition,
+          };
+        }));
+
       return {
         ...pastState,
-        nodes: state.nodes.filter((node) => node.id !== nodeId),
+        nodes,
         edges: state.edges.filter((edge) => edge.source !== nodeId && edge.target !== nodeId),
         selectedNodeId: state.selectedNodeId === nodeId ? null : state.selectedNodeId,
         selectedEdgeId:
@@ -435,11 +554,15 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
     if (state.nodes.length === 0) return;
 
     const pastState = pushHistory(state);
+    const layoutNodes = state.nodes.filter((node) => !isGroupNode(node) && !node.parentId);
+    const layoutNodeIds = new Set(layoutNodes.map((node) => node.id));
+    const layoutEdges = state.edges.filter((edge) => layoutNodeIds.has(edge.source) && layoutNodeIds.has(edge.target));
 
     try {
-      const layout = await elk.layout(toElkGraph(state.nodes, state.edges));
+      const layout = await elk.layout(toElkGraph(layoutNodes, layoutEdges));
       const nodes = state.nodes.map((node) => {
         const elkNode = layout.children?.find((item) => item.id === node.id);
+        if (!elkNode) return { ...node, selected: false };
 
         return {
           ...node,
@@ -473,7 +596,13 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       });
     } catch {
       const latestState = get();
-      const nodes = getLayeredFallbackLayout(latestState.nodes, latestState.edges);
+      const latestLayoutNodes = latestState.nodes.filter((node) => !isGroupNode(node) && !node.parentId);
+      const latestLayoutNodeIds = new Set(latestLayoutNodes.map((node) => node.id));
+      const latestLayoutEdges = latestState.edges.filter((edge) => latestLayoutNodeIds.has(edge.source) && latestLayoutNodeIds.has(edge.target));
+      const layoutNodeMap = new Map(
+        getLayeredFallbackLayout(latestLayoutNodes, latestLayoutEdges).map((node) => [node.id, node]),
+      );
+      const nodes = latestState.nodes.map((node) => layoutNodeMap.get(node.id) ?? { ...node, selected: false });
       const edges = applyDirectionalHandles(nodes, clearEdgeRoutes(latestState.edges));
       const graph = presentGraph({ nodes, edges });
 
@@ -527,7 +656,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
   onNodesChange: (changes) =>
     set((state) => {
       const hasGraphChange = changes.some(shouldRecordNodeChange);
-      const nodes = applyNodeChanges(changes, state.nodes);
+      const nodes = orderNodesForGroups(applyNodeChanges(changes, state.nodes));
       const selectedNodeId = changes.some((change) => change.type === 'remove' && change.id === state.selectedNodeId)
         ? null
         : state.selectedNodeId;
