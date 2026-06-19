@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Copy, Download, FileDown, Link2, Network, Redo2, Trash2, Undo2, Upload, Wand2 } from 'lucide-react';
+import { Copy, Download, FileDown, Grid3X3, Link2, Network, Redo2, Trash2, Undo2, Upload, Wand2 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { ReactFlowProvider } from '@xyflow/react';
 import { ArchitectureCanvas } from './components/ArchitectureCanvas';
@@ -25,6 +25,7 @@ export default function App() {
   const [importLabel, setImportLabel] = useState('Import');
   const [jsonLabel, setJsonLabel] = useState('JSON');
   const [imageLabel, setImageLabel] = useState('PNG');
+  const [showCanvasGrid, setShowCanvasGrid] = useState(true);
   const replaceTimer = useRef<number | undefined>(undefined);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const nodes = useGraphStore((state) => state.nodes);
@@ -261,6 +262,15 @@ export default function App() {
                 <Wand2 size={17} aria-hidden />
                 <span className="optional-button-text">Layout</span>
               </button>
+              <button
+                className={`secondary-button ${showCanvasGrid ? 'border-slate-900 bg-slate-100 text-slate-950' : ''}`}
+                type="button"
+                onClick={() => setShowCanvasGrid((value) => !value)}
+                title={showCanvasGrid ? 'Hide canvas dots' : 'Show canvas dots'}
+              >
+                <Grid3X3 size={17} aria-hidden />
+                <span className="optional-button-text">{showCanvasGrid ? 'Grid on' : 'Grid off'}</span>
+              </button>
               <select
                 aria-label="Edge label mode"
                 className="h-9 rounded border border-slate-200 bg-white px-2 text-sm font-medium text-slate-700 outline-none transition hover:border-slate-300 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
@@ -292,7 +302,7 @@ export default function App() {
             </div>
           </header>
           {isHydrated ? (
-            <ArchitectureCanvas />
+            <ArchitectureCanvas showGrid={showCanvasGrid} />
           ) : (
             <div className="grid min-h-0 flex-1 place-items-center bg-slate-50 text-sm text-slate-500">
               Loading diagram

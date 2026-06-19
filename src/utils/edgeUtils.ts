@@ -132,9 +132,43 @@ const getLabelOffsets = (edges: ArchitectureEdge[]) => {
   return offsets;
 };
 
+const getTerminalOffsets = (edges: ArchitectureEdge[]) => {
+  const groups = new Map<string, Array<{ edge: ArchitectureEdge; terminal: 'source' | 'target' }>>();
+
+  edges.forEach((edge) => {
+    const sourceKey = `source:${edge.source}:${edge.sourceHandle ?? 'right'}`;
+    const targetKey = `target:${edge.target}:${edge.targetHandle ?? 'left'}`;
+
+    groups.set(sourceKey, [...(groups.get(sourceKey) ?? []), { edge, terminal: 'source' }]);
+    groups.set(targetKey, [...(groups.get(targetKey) ?? []), { edge, terminal: 'target' }]);
+  });
+
+  const offsets = new Map<string, { source: number; target: number }>();
+
+  groups.forEach((group) => {
+    if (group.length < 2) return;
+
+    const sorted = [...group].sort((first, second) => first.edge.id.localeCompare(second.edge.id));
+    const center = (sorted.length - 1) / 2;
+
+    sorted.forEach((item, index) => {
+      const current = offsets.get(item.edge.id) ?? { source: 0, target: 0 };
+      const offset = (index - center) * 14;
+
+      offsets.set(item.edge.id, {
+        ...current,
+        [item.terminal]: offset,
+      });
+    });
+  });
+
+  return offsets;
+};
+
 export const applyEdgePresentation = (nodes: ArchitectureNode[], edges: ArchitectureEdge[]) => {
   const routeOffsets = getRouteOffsets(edges);
   const labelOffsets = getLabelOffsets(edges);
+  const terminalOffsets = getTerminalOffsets(edges);
 
   return edges.map<ArchitectureEdge>((edge) => {
     const color = getSourceColor(edge, nodes);
@@ -144,6 +178,7 @@ export const applyEdgePresentation = (nodes: ArchitectureNode[], edges: Architec
       x: data.manualLabelOffsetX ?? 0,
       y: data.manualLabelOffsetY ?? 0,
     };
+    const terminalOffset = terminalOffsets.get(edge.id) ?? { source: 0, target: 0 };
 
     return {
       ...edge,
@@ -152,6 +187,8 @@ export const applyEdgePresentation = (nodes: ArchitectureNode[], edges: Architec
         labelOffsetX: labelOffset.x + manualOffset.x,
         labelOffsetY: labelOffset.y + manualOffset.y,
         renderLabel: getDisplayedLabel({ ...edge, data }, nodes),
+        sourceTerminalOffset: terminalOffset.source,
+        targetTerminalOffset: terminalOffset.target,
       },
       label: undefined,
       ...getEdgeVisuals(data, color, routeOffsets.get(edge.id)),

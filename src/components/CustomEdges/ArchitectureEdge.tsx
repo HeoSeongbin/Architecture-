@@ -1,6 +1,7 @@
 import {
   BaseEdge,
   EdgeLabelRenderer,
+  Position,
   getSmoothStepPath,
   type EdgeProps,
 } from '@xyflow/react';
@@ -41,6 +42,28 @@ const getLabelRotation = (orientation: string) => {
   return '';
 };
 
+const applyTerminalOffset = (x: number, y: number, position: Position, offset = 0) => {
+  if (!offset) return { x, y };
+  if (position === Position.Top || position === Position.Bottom) return { x: x + offset, y };
+  return { x, y: y + offset };
+};
+
+const getOffsetRoutePoints = (
+  points: Array<{ x: number; y: number }>,
+  sourcePosition: Position,
+  targetPosition: Position,
+  sourceOffset = 0,
+  targetOffset = 0,
+) => {
+  if (points.length < 2) return points;
+
+  return points.map((point, index) => {
+    if (index === 0) return applyTerminalOffset(point.x, point.y, sourcePosition, sourceOffset);
+    if (index === points.length - 1) return applyTerminalOffset(point.x, point.y, targetPosition, targetOffset);
+    return point;
+  });
+};
+
 export function ArchitectureEdge({
   id,
   sourceX,
@@ -56,17 +79,25 @@ export function ArchitectureEdge({
   selected,
   style,
 }: EdgeProps<ArchitectureEdgeType>) {
+  const adjustedSource = applyTerminalOffset(sourceX, sourceY, sourcePosition, data?.sourceTerminalOffset);
+  const adjustedTarget = applyTerminalOffset(targetX, targetY, targetPosition, data?.targetTerminalOffset);
   const [edgePath, labelX, labelY] = getSmoothStepPath({
-    sourceX,
-    sourceY,
+    sourceX: adjustedSource.x,
+    sourceY: adjustedSource.y,
     sourcePosition,
-    targetX,
-    targetY,
+    targetX: adjustedTarget.x,
+    targetY: adjustedTarget.y,
     targetPosition,
     borderRadius: 14,
     offset: pathOptions?.offset,
   });
-  const routePoints = data?.routePoints ?? [];
+  const routePoints = getOffsetRoutePoints(
+    data?.routePoints ?? [],
+    sourcePosition,
+    targetPosition,
+    data?.sourceTerminalOffset,
+    data?.targetTerminalOffset,
+  );
   const routedPath =
     routePoints.length > 1
       ? routePoints.map((point, index) => `${index === 0 ? 'M' : 'L'}${point.x} ${point.y}`).join(' ')

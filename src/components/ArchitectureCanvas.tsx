@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { CSSProperties } from 'react';
 import {
   Background,
@@ -16,7 +16,7 @@ import { ArchitectureEdge } from './CustomEdges/ArchitectureEdge';
 import { ArchitectureNodeCard } from './CustomNodes/ArchitectureNodeCard';
 import { GroupNodeCard } from './CustomNodes/GroupNodeCard';
 import { useGraphStore } from '../store/useGraphStore';
-import type { ArchitectureNode, ArchitectureNodeData } from '../types/graph';
+import type { ArchitectureEdge as ArchitectureEdgeType, ArchitectureNode, ArchitectureNodeData } from '../types/graph';
 
 const nodeTypes: NodeTypes = {
   architectureNode: ArchitectureNodeCard,
@@ -59,10 +59,15 @@ const findGroupAtPosition = (position: { x: number; y: number }, nodes: Architec
       );
     });
 
-export function ArchitectureCanvas() {
+interface ArchitectureCanvasProps {
+  showGrid: boolean;
+}
+
+export function ArchitectureCanvas({ showGrid }: ArchitectureCanvasProps) {
   const { screenToFlowPosition } = useReactFlow();
   const nodes = useGraphStore((state) => state.nodes);
   const edges = useGraphStore((state) => state.edges);
+  const selectedNodeId = useGraphStore((state) => state.selectedNodeId);
   const addNode = useGraphStore((state) => state.addNode);
   const assignNodeToGroup = useGraphStore((state) => state.assignNodeToGroup);
   const onNodesChange = useGraphStore((state) => state.onNodesChange);
@@ -70,6 +75,24 @@ export function ArchitectureCanvas() {
   const onConnect = useGraphStore((state) => state.onConnect);
   const selectNode = useGraphStore((state) => state.selectNode);
   const selectEdge = useGraphStore((state) => state.selectEdge);
+  const visibleEdges = useMemo<ArchitectureEdgeType[]>(
+    () =>
+      edges.map((edge) => {
+        const isConnectedToSelectedNode = Boolean(selectedNodeId && (edge.source === selectedNodeId || edge.target === selectedNodeId));
+        if (!isConnectedToSelectedNode) return edge;
+
+        return {
+          ...edge,
+          style: {
+            ...edge.style,
+            filter: 'drop-shadow(0 0 5px rgba(15, 23, 42, 0.28))',
+            strokeWidth: 4,
+          },
+          zIndex: 20,
+        };
+      }),
+    [edges, selectedNodeId],
+  );
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
@@ -110,7 +133,7 @@ export function ArchitectureCanvas() {
         connectionMode={ConnectionMode.Loose}
         deleteKeyCode={['Backspace', 'Delete']}
         edgeTypes={edgeTypes}
-        edges={edges}
+        edges={visibleEdges}
         fitView
         fitViewOptions={{ padding: 0.25 }}
         nodeTypes={nodeTypes}
@@ -127,7 +150,7 @@ export function ArchitectureCanvas() {
           selectEdge(selectedNodeId ? null : (selectedEdges[0]?.id ?? null));
         }}
       >
-        <Background color="#cbd5e1" gap={22} size={1.4} variant={BackgroundVariant.Dots} />
+        {showGrid ? <Background color="#cbd5e1" gap={22} size={1.4} variant={BackgroundVariant.Dots} /> : null}
         <Controls position="bottom-right" />
         <MiniMap
           className="!bg-white !shadow-md"

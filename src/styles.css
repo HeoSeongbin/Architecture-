@@ -92,26 +92,38 @@ body {
   }
 
   .group-node {
-    @apply h-full w-full rounded border border-dashed border-slate-300 bg-white/60 p-3 shadow-sm transition;
+    @apply h-full w-full rounded border p-3 shadow-sm transition;
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--node-accent) 16%, white), color-mix(in srgb, var(--node-accent) 8%, white));
+    border-color: color-mix(in srgb, var(--node-accent) 42%, white);
     border-top: 5px solid var(--node-accent);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--node-accent) 18%, transparent),
+      0 8px 20px rgba(15, 23, 42, 0.08);
     min-height: 180px;
     min-width: 280px;
   }
 
   .group-node-selected {
-    @apply border-slate-500 bg-white/75 shadow-md ring-2 ring-slate-300;
+    @apply shadow-md ring-2 ring-slate-300;
+    border-color: color-mix(in srgb, var(--node-accent) 72%, #0f172a);
   }
 
   .group-node-header {
-    @apply flex items-start justify-between gap-3 rounded border border-slate-200 bg-white/90 px-3 py-2 shadow-sm;
+    @apply flex items-start justify-between gap-3 rounded border px-3 py-2 shadow-sm;
+    background: rgba(255, 255, 255, 0.82);
+    border-color: color-mix(in srgb, var(--node-accent) 24%, white);
   }
 
   .group-node-badge {
-    @apply shrink-0 rounded bg-slate-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-slate-500;
+    @apply shrink-0 rounded px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide;
+    background: color-mix(in srgb, var(--node-accent) 14%, white);
+    color: color-mix(in srgb, var(--node-accent) 72%, #334155);
   }
 
   .group-node-note {
-    @apply mt-2 max-w-sm rounded bg-white/80 px-3 py-2 text-xs leading-relaxed text-slate-500 shadow-sm;
+    @apply mt-2 max-w-sm rounded px-3 py-2 text-xs leading-relaxed text-slate-600 shadow-sm;
+    background: rgba(255, 255, 255, 0.68);
   }
 
   .group-resize-handle {
@@ -150,6 +162,12 @@ body {
 
 .react-flow__attribution {
   display: none;
+}
+
+.react-flow__edge path {
+  transition:
+    filter 120ms ease,
+    stroke-width 120ms ease;
 }
 
 .header-actions {

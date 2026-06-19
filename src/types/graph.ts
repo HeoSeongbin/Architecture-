@@ -46,6 +46,8 @@ export interface ArchitectureEdgeData extends Record<string, unknown> {
   renderLabel?: string;
   routePoints?: Array<{ x: number; y: number }>;
   showEndpoints?: boolean;
+  sourceTerminalOffset?: number;
+  targetTerminalOffset?: number;
 }
 
 export type ArchitectureNode = Node<ArchitectureNodeData, 'architectureNode' | 'groupNode'>;
