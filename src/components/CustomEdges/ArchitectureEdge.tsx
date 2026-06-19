@@ -43,9 +43,15 @@ export function ArchitectureEdge({
     borderRadius: 14,
     offset: pathOptions?.offset,
   });
+  const routePoints = data?.routePoints ?? [];
+  const routedPath =
+    routePoints.length > 1
+      ? routePoints.map((point, index) => `${index === 0 ? 'M' : 'L'}${point.x} ${point.y}`).join(' ')
+      : edgePath;
+  const centerPoint = routePoints[Math.floor(routePoints.length / 2)];
   const lines = splitLabel(data?.renderLabel ?? data?.label ?? '');
-  const translateX = labelX + (data?.labelOffsetX ?? 0);
-  const translateY = labelY + (data?.labelOffsetY ?? 0);
+  const translateX = (centerPoint?.x ?? labelX) + (data?.labelOffsetX ?? 0);
+  const translateY = (centerPoint?.y ?? labelY) + (data?.labelOffsetY ?? 0);
 
   return (
     <>
@@ -54,7 +60,7 @@ export function ArchitectureEdge({
         interactionWidth={24}
         markerEnd={markerEnd}
         markerStart={markerStart}
-        path={edgePath}
+        path={routedPath}
         style={style}
       />
       {lines.length > 0 ? (

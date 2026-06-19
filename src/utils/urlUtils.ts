@@ -25,12 +25,14 @@ const expandDirection = (direction?: MinifiedEdge['d']): ArchitectureEdgeData['d
 
 const minifyLabelMode = (labelMode?: ArchitectureEdgeData['labelMode'], showEndpoints?: boolean) => {
   const mode = labelMode ?? (showEndpoints ? 'compact' : 'protocol');
+  if (mode === 'hidden') return 'h';
   if (mode === 'compact') return 'c';
   if (mode === 'full') return 'f';
   return undefined;
 };
 
 const expandLabelMode = (labelMode?: MinifiedEdge['m'], showEndpoints?: boolean): ArchitectureEdgeData['labelMode'] => {
+  if (labelMode === 'h') return 'hidden';
   if (labelMode === 'c') return 'compact';
   if (labelMode === 'f') return 'full';
   return showEndpoints ? 'compact' : 'protocol';

@@ -109,6 +109,16 @@ body {
   .architecture-edge-label-selected {
     @apply border-slate-400 bg-slate-50 text-slate-950 ring-2 ring-slate-300;
   }
+
+  .architecture-lane {
+    @apply pointer-events-none absolute rounded border border-slate-200/70 bg-white/40 shadow-sm;
+    z-index: -1;
+    transform-origin: 0 0;
+  }
+
+  .architecture-lane-label {
+    @apply absolute left-3 top-2 rounded bg-white/90 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-slate-500 shadow-sm;
+  }
 }
 
 .react-flow__attribution {

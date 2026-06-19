@@ -36,6 +36,7 @@ const getSourceColor = (edge: ArchitectureEdge, nodes: ArchitectureNode[]) =>
 const getDisplayedLabel = (edge: ArchitectureEdge, nodes: ArchitectureNode[]) => {
   const label = edge.data?.label?.trim() ?? '';
   const labelMode = getEdgeLabelMode(edge.data);
+  if (labelMode === 'hidden') return '';
   if (labelMode === 'protocol') return label;
 
   const sourceNode = nodes.find((node) => node.id === edge.source);

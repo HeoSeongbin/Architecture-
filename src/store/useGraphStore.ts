@@ -7,7 +7,9 @@ import {
   type EdgeChange,
   type NodeChange,
 } from '@xyflow/react';
-import type { ArchitectureEdge, ArchitectureNode, GraphState } from '../types/graph';
+import ELK from 'elkjs/lib/elk.bundled.js';
+import type { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk-api';
+import type { ArchitectureEdge, ArchitectureEdgeData, ArchitectureNode, GraphState } from '../types/graph';
 import { presentGraph } from '../utils/edgeUtils';
 
 const HISTORY_LIMIT = 80;
@@ -113,6 +115,90 @@ const applyDirectionalHandles = (nodes: ArchitectureNode[], edges: ArchitectureE
     };
   });
 
+const clearEdgeRoutes = (edges: ArchitectureEdge[]) =>
+  edges.map((edge) => ({
+    ...edge,
+    data: { ...edge.data, routePoints: undefined },
+  }));
+
+const elk = new ELK();
+
+const toElkGraph = (nodes: ArchitectureNode[], edges: ArchitectureEdge[]): ElkNode => {
+  const depth = getGraphDepth(nodes, edges);
+
+  return {
+    id: 'root',
+    layoutOptions: {
+      'elk.algorithm': 'layered',
+      'elk.direction': 'RIGHT',
+      'elk.edgeRouting': 'ORTHOGONAL',
+      'elk.layered.spacing.nodeNodeBetweenLayers': '130',
+      'elk.spacing.nodeNode': '70',
+      'elk.spacing.edgeNode': '42',
+      'elk.spacing.edgeEdge': '24',
+      'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
+      'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
+    },
+    children: nodes.map((node) => ({
+      id: node.id,
+      width: 208,
+      height: 112,
+      layoutOptions: {
+        'elk.layered.layering.layerChoiceConstraint': String(Math.max(depth.get(node.id) ?? 0, getSemanticLayer(node))),
+      },
+    })),
+    edges: edges.map((edge) => ({
+      id: edge.id,
+      sources: [edge.source],
+      targets: [edge.target],
+    })),
+  };
+};
+
+const getRoutePoints = (elkEdge?: ElkExtendedEdge) => {
+  const section = elkEdge?.sections?.[0];
+  if (!section?.startPoint || !section.endPoint) return undefined;
+
+  return [section.startPoint, ...(section.bendPoints ?? []), section.endPoint].map((point) => ({ x: point.x, y: point.y }));
+};
+
+const getLayeredFallbackLayout = (nodes: ArchitectureNode[], edges: ArchitectureEdge[]) => {
+  const depth = getGraphDepth(nodes, edges);
+  const columns = new Map<number, ArchitectureNode[]>();
+
+  nodes.forEach((node) => {
+    const column = Math.max(depth.get(node.id) ?? 0, getSemanticLayer(node));
+    columns.set(column, [...(columns.get(column) ?? []), node]);
+  });
+
+  const sortedColumns = Array.from(columns.keys()).sort((first, second) => first - second);
+  const columnIndex = new Map(sortedColumns.map((column, index) => [column, index]));
+  const sortedColumnNodes = new Map(
+    Array.from(columns.entries()).map(([column, columnNodes]) => [
+      column,
+      [...columnNodes].sort((first, second) => {
+        const firstLayer = getSemanticLayer(first);
+        const secondLayer = getSemanticLayer(second);
+        if (firstLayer !== secondLayer) return firstLayer - secondLayer;
+        return first.data.label.localeCompare(second.data.label);
+      }),
+    ]),
+  );
+
+  return nodes.map((node) => {
+    const column = Math.max(depth.get(node.id) ?? 0, getSemanticLayer(node));
+    const columnNodes = sortedColumnNodes.get(column) ?? [];
+    const row = columnNodes.findIndex((item) => item.id === node.id);
+    const compactColumn = columnIndex.get(column) ?? column;
+
+    return {
+      ...node,
+      position: { x: 80 + compactColumn * 320, y: 90 + row * 180 },
+      selected: false,
+    };
+  });
+};
+
 interface GraphStore extends GraphState {
   selectedNodeId: string | null;
   selectedEdgeId: string | null;
@@ -127,10 +213,11 @@ interface GraphStore extends GraphState {
   selectEdge: (edgeId: string | null) => void;
   updateNodeData: (nodeId: string, data: Partial<ArchitectureNode['data']>) => void;
   updateEdgeData: (edgeId: string, data: Partial<ArchitectureEdge['data']>) => void;
+  setAllEdgeLabelModes: (labelMode: NonNullable<ArchitectureEdgeData['labelMode']>) => void;
   duplicateNode: (nodeId: string) => void;
   deleteNode: (nodeId: string) => void;
   deleteEdge: (edgeId: string) => void;
-  autoLayout: () => void;
+  autoLayout: () => Promise<void>;
   undo: () => void;
   redo: () => void;
   onNodesChange: (changes: NodeChange<ArchitectureNode>[]) => void;
@@ -138,7 +225,7 @@ interface GraphStore extends GraphState {
   onConnect: (connection: Connection) => void;
 }
 
-export const useGraphStore = create<GraphStore>((set) => ({
+export const useGraphStore = create<GraphStore>((set, get) => ({
   nodes: [],
   edges: [],
   selectedNodeId: null,
@@ -226,6 +313,25 @@ export const useGraphStore = create<GraphStore>((set) => ({
         canRedo: false,
       };
     }),
+  setAllEdgeLabelModes: (labelMode) =>
+    set((state) => {
+      const pastState = pushHistory(state);
+      const edges = state.edges.map((edge) => ({
+        ...edge,
+        data: {
+          ...edge.data,
+          labelMode,
+          showEndpoints: labelMode === 'compact' || labelMode === 'full',
+        },
+      }));
+
+      return {
+        ...pastState,
+        edges: presentGraph({ nodes: state.nodes, edges }).edges,
+        canUndo: pastState.past.length > 0,
+        canRedo: false,
+      };
+    }),
   duplicateNode: (nodeId) =>
     set((state) => {
       const node = state.nodes.find((item) => item.id === nodeId);
@@ -279,49 +385,39 @@ export const useGraphStore = create<GraphStore>((set) => ({
         canRedo: false,
       };
     }),
-  autoLayout: () =>
-    set((state) => {
-      if (state.nodes.length === 0) return state;
+  autoLayout: async () => {
+    const state = get();
+    if (state.nodes.length === 0) return;
 
-      const pastState = pushHistory(state);
-      const depth = getGraphDepth(state.nodes, state.edges);
+    const pastState = pushHistory(state);
 
-      const columns = new Map<number, ArchitectureNode[]>();
-      state.nodes.forEach((node) => {
-        const column = Math.max(depth.get(node.id) ?? 0, getSemanticLayer(node));
-        columns.set(column, [...(columns.get(column) ?? []), node]);
-      });
-
-      const sortedColumns = Array.from(columns.keys()).sort((first, second) => first - second);
-      const columnIndex = new Map(sortedColumns.map((column, index) => [column, index]));
-      const sortedColumnNodes = new Map(
-        Array.from(columns.entries()).map(([column, columnNodes]) => [
-          column,
-          [...columnNodes].sort((first, second) => {
-            const firstLayer = getSemanticLayer(first);
-            const secondLayer = getSemanticLayer(second);
-            if (firstLayer !== secondLayer) return firstLayer - secondLayer;
-            return first.data.label.localeCompare(second.data.label);
-          }),
-        ]),
-      );
-
+    try {
+      const layout = await elk.layout(toElkGraph(state.nodes, state.edges));
       const nodes = state.nodes.map((node) => {
-        const column = Math.max(depth.get(node.id) ?? 0, getSemanticLayer(node));
-        const columnNodes = sortedColumnNodes.get(column) ?? [];
-        const row = columnNodes.findIndex((item) => item.id === node.id);
-        const compactColumn = columnIndex.get(column) ?? column;
+        const elkNode = layout.children?.find((item) => item.id === node.id);
 
         return {
           ...node,
-          position: { x: 80 + compactColumn * 320, y: 90 + row * 180 },
+          position: { x: 80 + (elkNode?.x ?? node.position.x), y: 80 + (elkNode?.y ?? node.position.y) },
           selected: false,
         };
       });
-      const edges = applyDirectionalHandles(nodes, state.edges);
+      const edgesWithHandles = applyDirectionalHandles(nodes, state.edges);
+      const edges = edgesWithHandles.map((edge) => {
+        const elkEdge = layout.edges?.find((item) => item.id === edge.id) as ElkExtendedEdge | undefined;
+        const routePoints = getRoutePoints(elkEdge);
+
+        return {
+          ...edge,
+          data: {
+            ...edge.data,
+            routePoints: routePoints?.map((point) => ({ x: 80 + point.x, y: 80 + point.y })),
+          },
+        };
+      });
       const graph = presentGraph({ nodes, edges });
 
-      return {
+      set({
         ...pastState,
         nodes: graph.nodes,
         edges: graph.edges,
@@ -329,8 +425,24 @@ export const useGraphStore = create<GraphStore>((set) => ({
         selectedEdgeId: null,
         canUndo: pastState.past.length > 0,
         canRedo: false,
-      };
-    }),
+      });
+    } catch {
+      const latestState = get();
+      const nodes = getLayeredFallbackLayout(latestState.nodes, latestState.edges);
+      const edges = applyDirectionalHandles(nodes, clearEdgeRoutes(latestState.edges));
+      const graph = presentGraph({ nodes, edges });
+
+      set({
+        ...pastState,
+        nodes: graph.nodes,
+        edges: graph.edges,
+        selectedNodeId: null,
+        selectedEdgeId: null,
+        canUndo: pastState.past.length > 0,
+        canRedo: false,
+      });
+    }
+  },
   undo: () =>
     set((state) => {
       const previous = state.past.at(-1);
@@ -386,7 +498,7 @@ export const useGraphStore = create<GraphStore>((set) => ({
       return {
         ...pastState,
         nodes,
-        edges: hasGraphChange ? presentGraph({ nodes, edges: state.edges }).edges : state.edges,
+        edges: hasGraphChange ? presentGraph({ nodes, edges: clearEdgeRoutes(state.edges) }).edges : state.edges,
         selectedNodeId,
         selectedEdgeId,
         canUndo: pastState.past.length > 0,

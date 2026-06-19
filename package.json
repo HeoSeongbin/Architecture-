@@ -12,6 +12,7 @@
     "@vitejs/plugin-react": "latest",
     "@xyflow/react": "latest",
     "base-64": "latest",
+    "elkjs": "^0.11.1",
     "html-to-image": "latest",
     "lucide-react": "latest",
     "pako": "latest",

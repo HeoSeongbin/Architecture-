@@ -9,6 +9,14 @@ import { sampleGraph } from './data/sampleGraph';
 import { useGraphStore } from './store/useGraphStore';
 import { normalizeImportedGraph, toExportableGraph } from './utils/jsonUtils';
 import { decodeStateFromUrl, encodeStateToUrl } from './utils/urlUtils';
+import type { ArchitectureEdgeData } from './types/graph';
+
+const labelModeOptions: Array<{ value: NonNullable<ArchitectureEdgeData['labelMode']>; label: string }> = [
+  { value: 'hidden', label: 'Hide labels' },
+  { value: 'protocol', label: 'Protocol' },
+  { value: 'compact', label: 'Compact' },
+  { value: 'full', label: 'Full' },
+];
 
 export default function App() {
   const [isHydrated, setIsHydrated] = useState(false);
@@ -26,8 +34,11 @@ export default function App() {
   const undo = useGraphStore((state) => state.undo);
   const redo = useGraphStore((state) => state.redo);
   const autoLayout = useGraphStore((state) => state.autoLayout);
+  const setAllEdgeLabelModes = useGraphStore((state) => state.setAllEdgeLabelModes);
   const encodedState = encodeStateToUrl({ nodes, edges });
   const urlSize = encodedState.length;
+  const edgeLabelModes = new Set(edges.map((edge) => edge.data?.labelMode ?? (edge.data?.showEndpoints ? 'compact' : 'protocol')));
+  const globalLabelMode = edgeLabelModes.size === 1 ? Array.from(edgeLabelModes)[0] : 'mixed';
 
   useEffect(() => {
     const decoded = decodeStateFromUrl(window.location.hash);
@@ -250,6 +261,19 @@ export default function App() {
                 <Wand2 size={17} aria-hidden />
                 <span className="optional-button-text">Layout</span>
               </button>
+              <select
+                aria-label="Edge label mode"
+                className="h-9 rounded border border-slate-200 bg-white px-2 text-sm font-medium text-slate-700 outline-none transition hover:border-slate-300 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
+                onChange={(event) => setAllEdgeLabelModes(event.target.value as NonNullable<ArchitectureEdgeData['labelMode']>)}
+                value={globalLabelMode}
+              >
+                {globalLabelMode === 'mixed' ? <option value="mixed">Mixed labels</option> : null}
+                {labelModeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
               <button className="secondary-button" type="button" onClick={exportJson}>
                 <FileDown size={17} aria-hidden />
                 <span>{jsonLabel}</span>

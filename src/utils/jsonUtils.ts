@@ -51,7 +51,7 @@ const normalizeEdge = (value: unknown, nodeIds: Set<string>): ArchitectureEdge |
   const showEndpoints = isRecord(value.data) && value.data.showEndpoints === true;
   const rawLabelMode = isRecord(value.data) && typeof value.data.labelMode === 'string' ? value.data.labelMode : undefined;
   const labelMode =
-    rawLabelMode === 'compact' || rawLabelMode === 'full' || rawLabelMode === 'protocol'
+    rawLabelMode === 'hidden' || rawLabelMode === 'compact' || rawLabelMode === 'full' || rawLabelMode === 'protocol'
       ? rawLabelMode
       : showEndpoints
         ? 'compact'

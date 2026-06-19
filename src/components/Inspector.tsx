@@ -11,6 +11,7 @@ const directionOptions = [
 ] as const;
 
 const labelModeOptions = [
+  { value: 'hidden', label: 'Hide' },
   { value: 'protocol', label: 'Protocol' },
   { value: 'compact', label: 'Compact' },
   { value: 'full', label: 'Full' },

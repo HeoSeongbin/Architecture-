@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import {
   Background,
   BackgroundVariant,
@@ -7,6 +7,7 @@ import {
   MiniMap,
   ReactFlow,
   useReactFlow,
+  ViewportPortal,
   type EdgeTypes,
   type NodeTypes,
 } from '@xyflow/react';
@@ -24,6 +25,26 @@ const edgeTypes: EdgeTypes = {
   architectureEdge: ArchitectureEdge,
 };
 
+const laneLabels = ['Client', 'Gateway', 'Backend', 'Services', 'Events', 'Data', 'Cloud'];
+
+const getLaneIndex = (node: ArchitectureNode) => {
+  const text = `${node.data.kind} ${node.data.category} ${node.data.label} ${node.data.subtitle} ${node.data.note ?? ''}`.toLowerCase();
+
+  if (/\b(front|frontend|react|ui|browser|client)\b/.test(text)) return 0;
+  if (/\b(api client|proxy|gateway|entry|nginx|load balancer|loadbalancer|firewall)\b/.test(text)) return 1;
+  if (/\b(backend|api|server|docker|container|wsl|runtime)\b/.test(text)) return 2;
+  if (/\b(service|controller|common|security|auth|admin|customer|project|document|role|user)\b/.test(text)) return 3;
+  if (/\b(queue|event|topic|stream|notification|audit|batch|worker|scheduler)\b/.test(text)) return 4;
+  if (/\b(db|database|mssql|oracle|mariadb|postgres|mongodb|redis|storage|file|table|seaweed)\b/.test(text)) return 5;
+  if (/\b(aws|azure|gcp|cloud|external|third-party|third party)\b/.test(text)) return 6;
+
+  if (node.data.category === 'Database') return 5;
+  if (node.data.category === 'Cloud') return 6;
+  if (node.data.category === 'Network') return 1;
+  if (node.data.category === 'Server') return 2;
+  return 3;
+};
+
 export function ArchitectureCanvas() {
   const { screenToFlowPosition } = useReactFlow();
   const nodes = useGraphStore((state) => state.nodes);
@@ -34,6 +55,29 @@ export function ArchitectureCanvas() {
   const onConnect = useGraphStore((state) => state.onConnect);
   const selectNode = useGraphStore((state) => state.selectNode);
   const selectEdge = useGraphStore((state) => state.selectEdge);
+  const lanes = useMemo(() => {
+    const grouped = new Map<number, ArchitectureNode[]>();
+
+    nodes.forEach((node) => {
+      const lane = getLaneIndex(node);
+      grouped.set(lane, [...(grouped.get(lane) ?? []), node]);
+    });
+
+    return Array.from(grouped.entries()).map(([lane, laneNodes]) => {
+      const minX = Math.min(...laneNodes.map((node) => node.position.x));
+      const maxX = Math.max(...laneNodes.map((node) => node.position.x));
+      const minY = Math.min(...laneNodes.map((node) => node.position.y));
+      const maxY = Math.max(...laneNodes.map((node) => node.position.y));
+
+      return {
+        height: Math.max(220, maxY - minY + 220),
+        label: laneLabels[lane] ?? 'Layer',
+        width: Math.max(280, maxX - minX + 280),
+        x: minX - 40,
+        y: minY - 70,
+      };
+    });
+  }, [nodes]);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -85,6 +129,17 @@ export function ArchitectureCanvas() {
           selectEdge(selectedNodeId ? null : (selectedEdges[0]?.id ?? null));
         }}
       >
+        <ViewportPortal>
+          {lanes.map((lane) => (
+            <div
+              className="architecture-lane"
+              key={`${lane.label}-${lane.x}-${lane.y}`}
+              style={{ height: lane.height, transform: `translate(${lane.x}px, ${lane.y}px)`, width: lane.width }}
+            >
+              <div className="architecture-lane-label">{lane.label}</div>
+            </div>
+          ))}
+        </ViewportPortal>
         <Background color="#cbd5e1" gap={22} size={1.4} variant={BackgroundVariant.Dots} />
         <Controls position="bottom-right" />
         <MiniMap
