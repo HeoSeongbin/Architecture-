@@ -9,7 +9,7 @@ import type {
   MinifiedGraph,
   MinifiedNode,
 } from '../types/graph';
-import { getEdgeVisuals } from './edgeUtils';
+import { presentGraph } from './edgeUtils';
 
 const minifyDirection = (direction?: ArchitectureEdgeData['direction']) => {
   if (direction === 'reverse') return 'r';
@@ -61,18 +61,20 @@ const minifyGraph = (state: GraphState): MinifiedGraph => ({
     t: edge.target,
     ...(edge.data?.label ? { l: edge.data.label } : {}),
     ...(minifyDirection(edge.data?.direction) ? { d: minifyDirection(edge.data?.direction) } : {}),
+    ...(edge.data?.showEndpoints ? { x: 1 as const } : {}),
   })),
 });
 
-const expandGraph = (graph: MinifiedGraph): GraphState => ({
-  nodes: graph.n.map<ArchitectureNode>((node) => ({
+const expandGraph = (graph: MinifiedGraph): GraphState => {
+  const nodes = graph.n.map<ArchitectureNode>((node) => ({
     id: node.i,
     type: 'architectureNode',
     position: { x: node.p[0], y: node.p[1] },
     data: node.d,
-  })),
-  edges: graph.e.map<ArchitectureEdge>((edge) => {
-    const data: ArchitectureEdgeData = { direction: expandDirection(edge.d), label: edge.l };
+  }));
+
+  const edges = graph.e.map<ArchitectureEdge>((edge) => {
+    const data: ArchitectureEdgeData = { direction: expandDirection(edge.d), label: edge.l, showEndpoints: edge.x === 1 };
 
     return {
       id: edge.i,
@@ -80,10 +82,11 @@ const expandGraph = (graph: MinifiedGraph): GraphState => ({
       target: edge.t,
       data,
       label: edge.l,
-      ...getEdgeVisuals(data),
     };
-  }),
-});
+  });
+
+  return presentGraph({ nodes, edges });
+};
 
 export const encodeStateToUrl = (state: GraphState) => {
   if (state.nodes.length === 0 && state.edges.length === 0) return '';

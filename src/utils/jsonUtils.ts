@@ -1,5 +1,5 @@
 import type { ArchitectureEdge, ArchitectureNode, GraphState } from '../types/graph';
-import { getEdgeVisuals } from './edgeUtils';
+import { presentGraph } from './edgeUtils';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -48,7 +48,8 @@ const normalizeEdge = (value: unknown, nodeIds: Set<string>): ArchitectureEdge |
   const rawDirection = isRecord(value.data) && typeof value.data.direction === 'string' ? value.data.direction : undefined;
   const direction =
     rawDirection === 'reverse' || rawDirection === 'bidirectional' || rawDirection === 'forward' ? rawDirection : 'forward';
-  const data: ArchitectureEdge['data'] = { direction, label };
+  const showEndpoints = isRecord(value.data) && value.data.showEndpoints === true;
+  const data: ArchitectureEdge['data'] = { direction, label, showEndpoints };
 
   return {
     id: value.id,
@@ -56,7 +57,6 @@ const normalizeEdge = (value: unknown, nodeIds: Set<string>): ArchitectureEdge |
     target: value.target,
     data,
     label,
-    ...getEdgeVisuals(data),
   };
 };
 
@@ -67,7 +67,7 @@ export const normalizeImportedGraph = (value: unknown): GraphState | null => {
   const nodeIds = new Set(nodes.map((node) => node.id));
   const edges = value.edges.map((edge) => normalizeEdge(edge, nodeIds)).filter((edge): edge is ArchitectureEdge => Boolean(edge));
 
-  return { nodes, edges };
+  return presentGraph({ nodes, edges });
 };
 
 export const toExportableGraph = (graph: GraphState): GraphState => ({
@@ -81,8 +81,11 @@ export const toExportableGraph = (graph: GraphState): GraphState => ({
     id: edge.id,
     source: edge.source,
     target: edge.target,
-    data: { direction: edge.data?.direction ?? 'forward', label: edge.data?.label },
+    data: {
+      direction: edge.data?.direction ?? 'forward',
+      label: edge.data?.label,
+      showEndpoints: edge.data?.showEndpoints ?? false,
+    },
     label: edge.data?.label,
-    ...getEdgeVisuals(edge.data),
   })),
 });

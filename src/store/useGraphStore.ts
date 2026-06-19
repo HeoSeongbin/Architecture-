@@ -8,7 +8,7 @@ import {
   type NodeChange,
 } from '@xyflow/react';
 import type { ArchitectureEdge, ArchitectureNode, GraphState } from '../types/graph';
-import { getEdgeVisuals } from '../utils/edgeUtils';
+import { presentGraph } from '../utils/edgeUtils';
 
 const HISTORY_LIMIT = 80;
 
@@ -62,24 +62,29 @@ export const useGraphStore = create<GraphStore>((set) => ({
   future: [],
   canUndo: false,
   canRedo: false,
-  setGraph: (graph) =>
-    set({
-      nodes: graph.nodes,
-      edges: graph.edges,
+  setGraph: (graph) => {
+    const presentedGraph = presentGraph(graph);
+
+    return set({
+      nodes: presentedGraph.nodes,
+      edges: presentedGraph.edges,
       selectedNodeId: null,
       selectedEdgeId: null,
       past: [],
       future: [],
       canUndo: false,
       canRedo: false,
-    }),
+    });
+  },
   replaceGraph: (graph) =>
     set((state) => {
       const pastState = pushHistory(state);
+      const presentedGraph = presentGraph(graph);
+
       return {
         ...pastState,
-        nodes: graph.nodes,
-        edges: graph.edges,
+        nodes: presentedGraph.nodes,
+        edges: presentedGraph.edges,
         selectedNodeId: null,
         selectedEdgeId: null,
         canUndo: pastState.past.length > 0,
@@ -105,9 +110,12 @@ export const useGraphStore = create<GraphStore>((set) => ({
       if (!state.nodes.some((node) => node.id === nodeId)) return state;
 
       const pastState = pushHistory(state);
+      const nodes = state.nodes.map((node) => (node.id === nodeId ? { ...node, data: { ...node.data, ...data } } : node));
+
       return {
         ...pastState,
-        nodes: state.nodes.map((node) => (node.id === nodeId ? { ...node, data: { ...node.data, ...data } } : node)),
+        nodes,
+        edges: presentGraph({ nodes, edges: state.edges }).edges,
         canUndo: pastState.past.length > 0,
         canRedo: false,
       };
@@ -117,19 +125,18 @@ export const useGraphStore = create<GraphStore>((set) => ({
       if (!state.edges.some((edge) => edge.id === edgeId)) return state;
 
       const pastState = pushHistory(state);
+      const edges = state.edges.map((edge) => {
+        if (edge.id !== edgeId) return edge;
+
+        return {
+          ...edge,
+          data: { ...edge.data, ...data },
+        };
+      });
+
       return {
         ...pastState,
-        edges: state.edges.map((edge) => {
-          if (edge.id !== edgeId) return edge;
-
-          const nextData = { ...edge.data, ...data };
-          return {
-            ...edge,
-            data: nextData,
-            label: nextData.label,
-            ...getEdgeVisuals(nextData),
-          };
-        }),
+        edges: presentGraph({ nodes: state.nodes, edges }).edges,
         canUndo: pastState.past.length > 0,
         canRedo: false,
       };
@@ -306,6 +313,7 @@ export const useGraphStore = create<GraphStore>((set) => ({
       return {
         ...pastState,
         nodes,
+        edges: hasGraphChange ? presentGraph({ nodes, edges: state.edges }).edges : state.edges,
         selectedNodeId,
         selectedEdgeId,
         canUndo: pastState.past.length > 0,
@@ -316,9 +324,11 @@ export const useGraphStore = create<GraphStore>((set) => ({
     set((state) => {
       const hasGraphChange = changes.some((change) => change.type !== 'select');
       const pastState = hasGraphChange ? pushHistory(state) : { past: state.past, future: state.future };
+      const edges = applyEdgeChanges(changes, state.edges);
+
       return {
         ...pastState,
-        edges: applyEdgeChanges(changes, state.edges),
+        edges: hasGraphChange ? presentGraph({ nodes: state.nodes, edges }).edges : edges,
         selectedEdgeId: changes.some((change) => change.type === 'remove' && change.id === state.selectedEdgeId)
           ? null
           : state.selectedEdgeId,
@@ -329,17 +339,20 @@ export const useGraphStore = create<GraphStore>((set) => ({
   onConnect: (connection) =>
     set((state) => {
       const pastState = pushHistory(state);
+      const sourceColor = state.nodes.find((node) => node.id === connection.source)?.data.accent;
+      const nextEdges = addEdge(
+        {
+          ...connection,
+          id: `edge-${connection.source}-${connection.target}-${crypto.randomUUID().slice(0, 8)}`,
+          data: { direction: 'forward', label: '' },
+          style: sourceColor ? { stroke: sourceColor, strokeWidth: 2 } : undefined,
+        },
+        state.edges,
+      );
+
       return {
         ...pastState,
-        edges: addEdge(
-          {
-            ...connection,
-            id: `edge-${connection.source}-${connection.target}-${crypto.randomUUID().slice(0, 8)}`,
-            data: { direction: 'forward', label: '' },
-            ...getEdgeVisuals({ direction: 'forward', label: '' }),
-          },
-          state.edges,
-        ),
+        edges: presentGraph({ nodes: state.nodes, edges: nextEdges }).edges,
         selectedNodeId: null,
         canUndo: pastState.past.length > 0,
         canRedo: false,

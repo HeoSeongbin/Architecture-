@@ -124,6 +124,17 @@ export function Inspector() {
             value={selectedEdge.data?.label ?? ''}
           />
 
+          <label className="mt-3 flex items-center gap-2 text-sm text-slate-700" htmlFor="edge-show-endpoints">
+            <input
+              checked={selectedEdge.data?.showEndpoints ?? false}
+              className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-300"
+              id="edge-show-endpoints"
+              onChange={(event) => updateEdgeData(selectedEdge.id, { showEndpoints: event.target.checked })}
+              type="checkbox"
+            />
+            <span>Show source and target in label</span>
+          </label>
+
           <div className="field-label">Direction</div>
           <div className="grid grid-cols-3 gap-2">
             {directionOptions.map(({ value, label, Icon }) => {

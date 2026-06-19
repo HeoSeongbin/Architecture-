@@ -1,6 +1,6 @@
 import { architectureAssets } from './assets';
 import type { ArchitectureEdge, ArchitectureNode, ArchitectureNodeKind, GraphState } from '../types/graph';
-import { getEdgeVisuals } from '../utils/edgeUtils';
+import { presentGraph } from '../utils/edgeUtils';
 
 const assetByKind = new Map(architectureAssets.map((asset) => [asset.kind, asset]));
 
@@ -24,10 +24,9 @@ const makeEdge = (source: string, target: string, label: string): ArchitectureEd
   target,
   data: { direction: 'forward', label },
   label,
-  ...getEdgeVisuals({ direction: 'forward', label }),
 });
 
-export const sampleGraph: GraphState = {
+export const sampleGraph: GraphState = presentGraph({
   nodes: [
     makeNode('react', 40, 110),
     makeNode('nginx', 320, 110),
@@ -47,4 +46,4 @@ export const sampleGraph: GraphState = {
     makeEdge('aspnet', 'mariadb', 'SQL'),
     makeEdge('wsl', 'docker', 'Dev runtime'),
   ],
-};
+});
