@@ -96,6 +96,19 @@ body {
     @apply !h-3 !w-3 !border-2 !border-white;
     background: var(--node-accent) !important;
   }
+
+  .architecture-edge-label {
+    @apply pointer-events-none absolute z-10 flex max-w-44 flex-col items-center rounded border border-slate-200 bg-white/95 px-2 py-1 text-center text-[11px] font-semibold leading-tight text-slate-700 shadow-sm;
+    transform-origin: 0 0;
+  }
+
+  .architecture-edge-label span {
+    @apply block max-w-full truncate;
+  }
+
+  .architecture-edge-label-selected {
+    @apply border-slate-400 bg-slate-50 text-slate-950 ring-2 ring-slate-300;
+  }
 }
 
 .react-flow__attribution {

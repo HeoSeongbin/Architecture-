@@ -34,11 +34,15 @@ export interface ArchitectureNodeData extends Record<string, unknown> {
 export interface ArchitectureEdgeData extends Record<string, unknown> {
   direction?: 'forward' | 'reverse' | 'bidirectional';
   label?: string;
+  labelMode?: 'protocol' | 'compact' | 'full';
+  labelOffsetX?: number;
+  labelOffsetY?: number;
+  renderLabel?: string;
   showEndpoints?: boolean;
 }
 
 export type ArchitectureNode = Node<ArchitectureNodeData, 'architectureNode'>;
-export type ArchitectureEdge = Edge<ArchitectureEdgeData>;
+export type ArchitectureEdge = Edge<ArchitectureEdgeData, 'architectureEdge'>;
 
 export interface GraphState {
   nodes: ArchitectureNode[];
@@ -58,6 +62,7 @@ export interface MinifiedEdge {
   t: string;
   l?: string;
   d?: 'r' | 'b';
+  m?: 'c' | 'f';
   x?: 1;
 }
 

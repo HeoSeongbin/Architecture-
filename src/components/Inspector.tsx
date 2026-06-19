@@ -10,6 +10,12 @@ const directionOptions = [
   { value: 'bidirectional', label: 'Both', Icon: ArrowLeftRight },
 ] as const;
 
+const labelModeOptions = [
+  { value: 'protocol', label: 'Protocol' },
+  { value: 'compact', label: 'Compact' },
+  { value: 'full', label: 'Full' },
+] as const;
+
 export function Inspector() {
   const selectedNodeId = useGraphStore((state) => state.selectedNodeId);
   const selectedEdgeId = useGraphStore((state) => state.selectedEdgeId);
@@ -124,16 +130,24 @@ export function Inspector() {
             value={selectedEdge.data?.label ?? ''}
           />
 
-          <label className="mt-3 flex items-center gap-2 text-sm text-slate-700" htmlFor="edge-show-endpoints">
-            <input
-              checked={selectedEdge.data?.showEndpoints ?? false}
-              className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-300"
-              id="edge-show-endpoints"
-              onChange={(event) => updateEdgeData(selectedEdge.id, { showEndpoints: event.target.checked })}
-              type="checkbox"
-            />
-            <span>Show source and target in label</span>
-          </label>
+          <div className="field-label">Label display</div>
+          <div className="grid grid-cols-3 gap-2">
+            {labelModeOptions.map(({ value, label }) => {
+              const currentMode = selectedEdge.data?.labelMode ?? (selectedEdge.data?.showEndpoints ? 'compact' : 'protocol');
+              const isSelected = currentMode === value;
+
+              return (
+                <button
+                  className={`secondary-button justify-center px-2 ${isSelected ? 'border-slate-900 bg-slate-100 text-slate-950' : ''}`}
+                  key={value}
+                  onClick={() => updateEdgeData(selectedEdge.id, { labelMode: value, showEndpoints: value !== 'protocol' })}
+                  type="button"
+                >
+                  <span>{label}</span>
+                </button>
+              );
+            })}
+          </div>
 
           <div className="field-label">Direction</div>
           <div className="grid grid-cols-3 gap-2">

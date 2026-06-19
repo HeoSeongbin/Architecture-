@@ -49,7 +49,14 @@ const normalizeEdge = (value: unknown, nodeIds: Set<string>): ArchitectureEdge |
   const direction =
     rawDirection === 'reverse' || rawDirection === 'bidirectional' || rawDirection === 'forward' ? rawDirection : 'forward';
   const showEndpoints = isRecord(value.data) && value.data.showEndpoints === true;
-  const data: ArchitectureEdge['data'] = { direction, label, showEndpoints };
+  const rawLabelMode = isRecord(value.data) && typeof value.data.labelMode === 'string' ? value.data.labelMode : undefined;
+  const labelMode =
+    rawLabelMode === 'compact' || rawLabelMode === 'full' || rawLabelMode === 'protocol'
+      ? rawLabelMode
+      : showEndpoints
+        ? 'compact'
+        : 'protocol';
+  const data: ArchitectureEdge['data'] = { direction, label, labelMode, showEndpoints: labelMode !== 'protocol' };
 
   return {
     id: value.id,
@@ -84,7 +91,8 @@ export const toExportableGraph = (graph: GraphState): GraphState => ({
     data: {
       direction: edge.data?.direction ?? 'forward',
       label: edge.data?.label,
-      showEndpoints: edge.data?.showEndpoints ?? false,
+      labelMode: edge.data?.labelMode ?? (edge.data?.showEndpoints ? 'compact' : 'protocol'),
+      showEndpoints: edge.data?.showEndpoints ?? edge.data?.labelMode !== 'protocol',
     },
     label: edge.data?.label,
   })),

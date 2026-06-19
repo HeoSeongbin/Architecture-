@@ -7,15 +7,21 @@ import {
   MiniMap,
   ReactFlow,
   useReactFlow,
+  type EdgeTypes,
   type NodeTypes,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { ArchitectureEdge } from './CustomEdges/ArchitectureEdge';
 import { ArchitectureNodeCard } from './CustomNodes/ArchitectureNodeCard';
 import { useGraphStore } from '../store/useGraphStore';
 import type { ArchitectureNode, ArchitectureNodeData } from '../types/graph';
 
 const nodeTypes: NodeTypes = {
   architectureNode: ArchitectureNodeCard,
+};
+
+const edgeTypes: EdgeTypes = {
+  architectureEdge: ArchitectureEdge,
 };
 
 export function ArchitectureCanvas() {
@@ -62,6 +68,7 @@ export function ArchitectureCanvas() {
         colorMode="light"
         connectionMode={ConnectionMode.Loose}
         deleteKeyCode={['Backspace', 'Delete']}
+        edgeTypes={edgeTypes}
         edges={edges}
         fitView
         fitViewOptions={{ padding: 0.25 }}

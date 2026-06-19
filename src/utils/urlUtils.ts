@@ -23,6 +23,19 @@ const expandDirection = (direction?: MinifiedEdge['d']): ArchitectureEdgeData['d
   return 'forward';
 };
 
+const minifyLabelMode = (labelMode?: ArchitectureEdgeData['labelMode'], showEndpoints?: boolean) => {
+  const mode = labelMode ?? (showEndpoints ? 'compact' : 'protocol');
+  if (mode === 'compact') return 'c';
+  if (mode === 'full') return 'f';
+  return undefined;
+};
+
+const expandLabelMode = (labelMode?: MinifiedEdge['m'], showEndpoints?: boolean): ArchitectureEdgeData['labelMode'] => {
+  if (labelMode === 'c') return 'compact';
+  if (labelMode === 'f') return 'full';
+  return showEndpoints ? 'compact' : 'protocol';
+};
+
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
@@ -61,6 +74,7 @@ const minifyGraph = (state: GraphState): MinifiedGraph => ({
     t: edge.target,
     ...(edge.data?.label ? { l: edge.data.label } : {}),
     ...(minifyDirection(edge.data?.direction) ? { d: minifyDirection(edge.data?.direction) } : {}),
+    ...(minifyLabelMode(edge.data?.labelMode, edge.data?.showEndpoints) ? { m: minifyLabelMode(edge.data?.labelMode, edge.data?.showEndpoints) } : {}),
     ...(edge.data?.showEndpoints ? { x: 1 as const } : {}),
   })),
 });
@@ -74,7 +88,12 @@ const expandGraph = (graph: MinifiedGraph): GraphState => {
   }));
 
   const edges = graph.e.map<ArchitectureEdge>((edge) => {
-    const data: ArchitectureEdgeData = { direction: expandDirection(edge.d), label: edge.l, showEndpoints: edge.x === 1 };
+    const data: ArchitectureEdgeData = {
+      direction: expandDirection(edge.d),
+      label: edge.l,
+      labelMode: expandLabelMode(edge.m, edge.x === 1),
+      showEndpoints: edge.x === 1 || edge.m === 'c' || edge.m === 'f',
+    };
 
     return {
       id: edge.i,

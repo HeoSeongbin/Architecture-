@@ -5,7 +5,7 @@ const DEFAULT_EDGE_COLOR = '#475569';
 
 export const edgeDefaults = {
   animated: true,
-  type: 'smoothstep',
+  type: 'architectureEdge' as const,
   labelBgPadding: [8, 4] as [number, number],
   labelBgBorderRadius: 4,
   labelBgStyle: { fill: '#ffffff', fillOpacity: 0.92 },
@@ -21,18 +21,27 @@ const getArrowMarker = (color: string) => ({
 });
 
 export const getEdgeDirection = (data?: ArchitectureEdgeData) => data?.direction ?? 'forward';
+export const getEdgeLabelMode = (data?: ArchitectureEdgeData) =>
+  data?.labelMode ?? (data?.showEndpoints ? 'compact' : 'protocol');
 
 const getNodeLabel = (node?: ArchitectureNode) => node?.data.label ?? node?.id ?? 'Unknown';
+const getNodeFullLabel = (node?: ArchitectureNode) => {
+  if (!node) return 'Unknown';
+  return node.data.subtitle ? `${node.data.label} (${node.data.subtitle})` : node.data.label;
+};
 
 const getSourceColor = (edge: ArchitectureEdge, nodes: ArchitectureNode[]) =>
   nodes.find((node) => node.id === edge.source)?.data.accent ?? DEFAULT_EDGE_COLOR;
 
 const getDisplayedLabel = (edge: ArchitectureEdge, nodes: ArchitectureNode[]) => {
   const label = edge.data?.label?.trim() ?? '';
-  if (!edge.data?.showEndpoints) return label;
+  const labelMode = getEdgeLabelMode(edge.data);
+  if (labelMode === 'protocol') return label;
 
-  const source = getNodeLabel(nodes.find((node) => node.id === edge.source));
-  const target = getNodeLabel(nodes.find((node) => node.id === edge.target));
+  const sourceNode = nodes.find((node) => node.id === edge.source);
+  const targetNode = nodes.find((node) => node.id === edge.target);
+  const source = labelMode === 'full' ? getNodeFullLabel(sourceNode) : getNodeLabel(sourceNode);
+  const target = labelMode === 'full' ? getNodeFullLabel(targetNode) : getNodeLabel(targetNode);
   const direction = getEdgeDirection(edge.data);
   const endpoints =
     direction === 'reverse' ? `${target} -> ${source}` : direction === 'bidirectional' ? `${source} <-> ${target}` : `${source} -> ${target}`;
@@ -84,17 +93,62 @@ const getRouteOffsets = (edges: ArchitectureEdge[]) => {
   return offsets;
 };
 
+const getLabelOffsets = (edges: ArchitectureEdge[]) => {
+  const groups = new Map<string, ArchitectureEdge[]>();
+
+  edges.forEach((edge) => {
+    const key = `${edge.source}->${edge.target}`;
+    groups.set(key, [...(groups.get(key) ?? []), edge]);
+  });
+
+  edges.forEach((edge) => {
+    const targetKey = `target:${edge.target}`;
+    groups.set(targetKey, [...(groups.get(targetKey) ?? []), edge]);
+
+    const sourceKey = `source:${edge.source}`;
+    groups.set(sourceKey, [...(groups.get(sourceKey) ?? []), edge]);
+  });
+
+  const offsets = new Map<string, { x: number; y: number }>();
+
+  groups.forEach((group) => {
+    if (group.length < 2) return;
+
+    const sorted = [...group].sort((first, second) => first.id.localeCompare(second.id));
+    const center = (sorted.length - 1) / 2;
+
+    sorted.forEach((edge, index) => {
+      const current = offsets.get(edge.id) ?? { x: 0, y: 0 };
+      const distance = index - center;
+
+      offsets.set(edge.id, {
+        x: current.x + (Math.abs(distance) > 0.5 ? Math.sign(distance) * 12 : 0),
+        y: current.y + distance * 30,
+      });
+    });
+  });
+
+  return offsets;
+};
+
 export const applyEdgePresentation = (nodes: ArchitectureNode[], edges: ArchitectureEdge[]) => {
   const routeOffsets = getRouteOffsets(edges);
+  const labelOffsets = getLabelOffsets(edges);
 
   return edges.map<ArchitectureEdge>((edge) => {
     const color = getSourceColor(edge, nodes);
     const data = { direction: 'forward' as const, ...edge.data };
+    const labelOffset = labelOffsets.get(edge.id) ?? { x: 0, y: 0 };
 
     return {
       ...edge,
-      data,
-      label: getDisplayedLabel({ ...edge, data }, nodes),
+      data: {
+        ...data,
+        labelOffsetX: labelOffset.x,
+        labelOffsetY: labelOffset.y,
+        renderLabel: getDisplayedLabel({ ...edge, data }, nodes),
+      },
+      label: undefined,
       ...getEdgeVisuals(data, color, routeOffsets.get(edge.id)),
     };
   });
