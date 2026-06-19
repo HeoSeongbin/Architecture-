@@ -33,10 +33,13 @@ export interface ArchitectureNodeData extends Record<string, unknown> {
 
 export interface ArchitectureEdgeData extends Record<string, unknown> {
   direction?: 'forward' | 'reverse' | 'bidirectional';
+  handleMode?: 'auto' | 'manual';
   label?: string;
   labelMode?: 'hidden' | 'protocol' | 'compact' | 'full';
   labelOffsetX?: number;
   labelOffsetY?: number;
+  manualLabelOffsetX?: number;
+  manualLabelOffsetY?: number;
   renderLabel?: string;
   routePoints?: Array<{ x: number; y: number }>;
   showEndpoints?: boolean;
@@ -63,7 +66,10 @@ export interface MinifiedEdge {
   t: string;
   l?: string;
   d?: 'r' | 'b';
+  h?: 1;
   m?: 'h' | 'c' | 'f';
+  ox?: number;
+  oy?: number;
   a?: 't' | 'r' | 'b' | 'l';
   z?: 't' | 'r' | 'b' | 'l';
   x?: 1;

@@ -93,6 +93,9 @@ const minifyGraph = (state: GraphState): MinifiedGraph => ({
     ...(edge.data?.label ? { l: edge.data.label } : {}),
     ...(minifyDirection(edge.data?.direction) ? { d: minifyDirection(edge.data?.direction) } : {}),
     ...(minifyLabelMode(edge.data?.labelMode, edge.data?.showEndpoints) ? { m: minifyLabelMode(edge.data?.labelMode, edge.data?.showEndpoints) } : {}),
+    ...(edge.data?.handleMode === 'manual' ? { h: 1 as const } : {}),
+    ...(edge.data?.manualLabelOffsetX ? { ox: Math.round(edge.data.manualLabelOffsetX) } : {}),
+    ...(edge.data?.manualLabelOffsetY ? { oy: Math.round(edge.data.manualLabelOffsetY) } : {}),
     ...(minifyHandle(edge.sourceHandle) ? { a: minifyHandle(edge.sourceHandle) } : {}),
     ...(minifyHandle(edge.targetHandle) ? { z: minifyHandle(edge.targetHandle) } : {}),
     ...(edge.data?.showEndpoints ? { x: 1 as const } : {}),
@@ -112,6 +115,9 @@ const expandGraph = (graph: MinifiedGraph): GraphState => {
       direction: expandDirection(edge.d),
       label: edge.l,
       labelMode: expandLabelMode(edge.m, edge.x === 1),
+      handleMode: edge.h === 1 ? 'manual' : 'auto',
+      manualLabelOffsetX: edge.ox,
+      manualLabelOffsetY: edge.oy,
       showEndpoints: edge.x === 1 || edge.m === 'c' || edge.m === 'f',
     };
 

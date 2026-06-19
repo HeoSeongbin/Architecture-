@@ -57,6 +57,9 @@ const normalizeEdge = (value: unknown, nodeIds: Set<string>): ArchitectureEdge |
         ? 'compact'
         : 'protocol';
   const data: ArchitectureEdge['data'] = { direction, label, labelMode, showEndpoints: labelMode !== 'protocol' };
+  if (isRecord(value.data) && value.data.handleMode === 'manual') data.handleMode = 'manual';
+  if (isRecord(value.data) && typeof value.data.manualLabelOffsetX === 'number') data.manualLabelOffsetX = value.data.manualLabelOffsetX;
+  if (isRecord(value.data) && typeof value.data.manualLabelOffsetY === 'number') data.manualLabelOffsetY = value.data.manualLabelOffsetY;
 
   return {
     id: value.id,
@@ -94,8 +97,11 @@ export const toExportableGraph = (graph: GraphState): GraphState => ({
     targetHandle: edge.targetHandle,
     data: {
       direction: edge.data?.direction ?? 'forward',
+      handleMode: edge.data?.handleMode ?? 'auto',
       label: edge.data?.label,
       labelMode: edge.data?.labelMode ?? (edge.data?.showEndpoints ? 'compact' : 'protocol'),
+      manualLabelOffsetX: edge.data?.manualLabelOffsetX ?? 0,
+      manualLabelOffsetY: edge.data?.manualLabelOffsetY ?? 0,
       showEndpoints: edge.data?.showEndpoints ?? edge.data?.labelMode !== 'protocol',
     },
     label: edge.data?.label,

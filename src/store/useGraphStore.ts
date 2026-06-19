@@ -106,6 +106,8 @@ const getEdgeHandles = (source?: ArchitectureNode, target?: ArchitectureNode) =>
 
 const applyDirectionalHandles = (nodes: ArchitectureNode[], edges: ArchitectureEdge[]) =>
   edges.map((edge) => {
+    if (edge.data?.handleMode === 'manual' && edge.sourceHandle && edge.targetHandle) return edge;
+
     const source = nodes.find((node) => node.id === edge.source);
     const target = nodes.find((node) => node.id === edge.target);
 
@@ -213,6 +215,10 @@ interface GraphStore extends GraphState {
   selectEdge: (edgeId: string | null) => void;
   updateNodeData: (nodeId: string, data: Partial<ArchitectureNode['data']>) => void;
   updateEdgeData: (edgeId: string, data: Partial<ArchitectureEdge['data']>) => void;
+  updateEdgeConnection: (
+    edgeId: string,
+    connection: Partial<Pick<ArchitectureEdge, 'sourceHandle' | 'targetHandle'>> & { handleMode?: ArchitectureEdgeData['handleMode'] },
+  ) => void;
   setAllEdgeLabelModes: (labelMode: NonNullable<ArchitectureEdgeData['labelMode']>) => void;
   duplicateNode: (nodeId: string) => void;
   deleteNode: (nodeId: string) => void;
@@ -302,7 +308,46 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
 
         return {
           ...edge,
-          data: { ...edge.data, ...data },
+          data: {
+            ...edge.data,
+            ...data,
+            routePoints:
+              data?.handleMode === 'manual' ||
+              typeof data?.manualLabelOffsetX === 'number' ||
+              typeof data?.manualLabelOffsetY === 'number'
+                ? undefined
+                : edge.data?.routePoints,
+          },
+        };
+      });
+
+      return {
+        ...pastState,
+        edges: presentGraph({ nodes: state.nodes, edges }).edges,
+        canUndo: pastState.past.length > 0,
+        canRedo: false,
+      };
+    }),
+  updateEdgeConnection: (edgeId, connection) =>
+    set((state) => {
+      if (!state.edges.some((edge) => edge.id === edgeId)) return state;
+
+      const pastState = pushHistory(state);
+      const edges = state.edges.map((edge) => {
+        if (edge.id !== edgeId) return edge;
+        const { handleMode = 'manual', ...connectionHandles } = connection;
+        const source = state.nodes.find((node) => node.id === edge.source);
+        const target = state.nodes.find((node) => node.id === edge.target);
+        const nextHandles = handleMode === 'auto' ? getEdgeHandles(source, target) : connectionHandles;
+
+        return {
+          ...edge,
+          ...nextHandles,
+          data: {
+            ...edge.data,
+            handleMode,
+            routePoints: undefined,
+          },
         };
       });
 
@@ -405,7 +450,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       const edgesWithHandles = applyDirectionalHandles(nodes, state.edges);
       const edges = edgesWithHandles.map((edge) => {
         const elkEdge = layout.edges?.find((item) => item.id === edge.id) as ElkExtendedEdge | undefined;
-        const routePoints = getRoutePoints(elkEdge);
+        const routePoints = edge.data?.handleMode === 'manual' ? undefined : getRoutePoints(elkEdge);
 
         return {
           ...edge,

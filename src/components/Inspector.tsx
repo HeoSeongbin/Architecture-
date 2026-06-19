@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowLeftRight, ArrowRight, CopyPlus, GitBranch, Palette, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowLeftRight, ArrowRight, CopyPlus, GitBranch, Palette, RotateCcw, Trash2 } from 'lucide-react';
 import { useMemo } from 'react';
 import { useGraphStore } from '../store/useGraphStore';
 
@@ -17,6 +17,13 @@ const labelModeOptions = [
   { value: 'full', label: 'Full' },
 ] as const;
 
+const handleSideOptions = [
+  { value: 'top', label: 'Top' },
+  { value: 'right', label: 'Right' },
+  { value: 'bottom', label: 'Bottom' },
+  { value: 'left', label: 'Left' },
+] as const;
+
 export function Inspector() {
   const selectedNodeId = useGraphStore((state) => state.selectedNodeId);
   const selectedEdgeId = useGraphStore((state) => state.selectedEdgeId);
@@ -24,6 +31,7 @@ export function Inspector() {
   const edges = useGraphStore((state) => state.edges);
   const updateNodeData = useGraphStore((state) => state.updateNodeData);
   const updateEdgeData = useGraphStore((state) => state.updateEdgeData);
+  const updateEdgeConnection = useGraphStore((state) => state.updateEdgeConnection);
   const duplicateNode = useGraphStore((state) => state.duplicateNode);
   const deleteNode = useGraphStore((state) => state.deleteNode);
   const deleteEdge = useGraphStore((state) => state.deleteEdge);
@@ -141,7 +149,7 @@ export function Inspector() {
                 <button
                   className={`secondary-button justify-center px-2 ${isSelected ? 'border-slate-900 bg-slate-100 text-slate-950' : ''}`}
                   key={value}
-                  onClick={() => updateEdgeData(selectedEdge.id, { labelMode: value, showEndpoints: value !== 'protocol' })}
+                  onClick={() => updateEdgeData(selectedEdge.id, { labelMode: value, showEndpoints: value === 'compact' || value === 'full' })}
                   type="button"
                 >
                   <span>{label}</span>
@@ -168,6 +176,96 @@ export function Inspector() {
               );
             })}
           </div>
+
+          <div className="field-label">Connection sides</div>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="text-xs font-medium text-slate-500" htmlFor="edge-source-handle">
+              Source
+            </label>
+            <label className="text-xs font-medium text-slate-500" htmlFor="edge-target-handle">
+              Target
+            </label>
+            <select
+              className="field-input h-9"
+              id="edge-source-handle"
+              onChange={(event) =>
+                updateEdgeConnection(selectedEdge.id, {
+                  sourceHandle: event.target.value,
+                  targetHandle: selectedEdge.targetHandle ?? 'left',
+                })
+              }
+              value={selectedEdge.sourceHandle ?? 'right'}
+            >
+              {handleSideOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <select
+              className="field-input h-9"
+              id="edge-target-handle"
+              onChange={(event) =>
+                updateEdgeConnection(selectedEdge.id, {
+                  sourceHandle: selectedEdge.sourceHandle ?? 'right',
+                  targetHandle: event.target.value,
+                })
+              }
+              value={selectedEdge.targetHandle ?? 'left'}
+            >
+              {handleSideOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            className="secondary-button mt-2 w-full justify-center"
+            onClick={() => updateEdgeConnection(selectedEdge.id, { handleMode: 'auto' })}
+            type="button"
+          >
+            <RotateCcw size={15} aria-hidden />
+            <span>Auto sides</span>
+          </button>
+
+          <div className="field-label">Label position</div>
+          <div className="space-y-3">
+            <label className="block text-xs font-medium text-slate-500" htmlFor="edge-label-offset-x">
+              X offset: {selectedEdge.data?.manualLabelOffsetX ?? 0}px
+            </label>
+            <input
+              className="w-full"
+              id="edge-label-offset-x"
+              max={140}
+              min={-140}
+              onChange={(event) => updateEdgeData(selectedEdge.id, { manualLabelOffsetX: Number(event.target.value) })}
+              step={5}
+              type="range"
+              value={selectedEdge.data?.manualLabelOffsetX ?? 0}
+            />
+            <label className="block text-xs font-medium text-slate-500" htmlFor="edge-label-offset-y">
+              Y offset: {selectedEdge.data?.manualLabelOffsetY ?? 0}px
+            </label>
+            <input
+              className="w-full"
+              id="edge-label-offset-y"
+              max={140}
+              min={-140}
+              onChange={(event) => updateEdgeData(selectedEdge.id, { manualLabelOffsetY: Number(event.target.value) })}
+              step={5}
+              type="range"
+              value={selectedEdge.data?.manualLabelOffsetY ?? 0}
+            />
+          </div>
+          <button
+            className="secondary-button mt-2 w-full justify-center"
+            onClick={() => updateEdgeData(selectedEdge.id, { manualLabelOffsetX: 0, manualLabelOffsetY: 0 })}
+            type="button"
+          >
+            <RotateCcw size={15} aria-hidden />
+            <span>Reset label position</span>
+          </button>
 
           <div className="mt-6">
             <button className="danger-button w-full" onClick={() => deleteEdge(selectedEdge.id)} type="button">

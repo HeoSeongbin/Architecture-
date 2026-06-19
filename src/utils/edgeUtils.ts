@@ -140,13 +140,17 @@ export const applyEdgePresentation = (nodes: ArchitectureNode[], edges: Architec
     const color = getSourceColor(edge, nodes);
     const data = { direction: 'forward' as const, ...edge.data };
     const labelOffset = labelOffsets.get(edge.id) ?? { x: 0, y: 0 };
+    const manualOffset = {
+      x: data.manualLabelOffsetX ?? 0,
+      y: data.manualLabelOffsetY ?? 0,
+    };
 
     return {
       ...edge,
       data: {
         ...data,
-        labelOffsetX: labelOffset.x,
-        labelOffsetY: labelOffset.y,
+        labelOffsetX: labelOffset.x + manualOffset.x,
+        labelOffsetY: labelOffset.y + manualOffset.y,
         renderLabel: getDisplayedLabel({ ...edge, data }, nodes),
       },
       label: undefined,
