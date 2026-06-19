@@ -63,6 +63,8 @@ export interface MinifiedEdge {
   l?: string;
   d?: 'r' | 'b';
   m?: 'c' | 'f';
+  a?: 't' | 'r' | 'b' | 'l';
+  z?: 't' | 'r' | 'b' | 'l';
   x?: 1;
 }
 

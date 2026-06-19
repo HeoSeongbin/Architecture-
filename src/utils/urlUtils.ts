@@ -36,6 +36,22 @@ const expandLabelMode = (labelMode?: MinifiedEdge['m'], showEndpoints?: boolean)
   return showEndpoints ? 'compact' : 'protocol';
 };
 
+const minifyHandle = (handle?: string | null): MinifiedEdge['a'] => {
+  if (handle === 'top') return 't';
+  if (handle === 'right') return 'r';
+  if (handle === 'bottom') return 'b';
+  if (handle === 'left') return 'l';
+  return undefined;
+};
+
+const expandHandle = (handle?: MinifiedEdge['a']) => {
+  if (handle === 't') return 'top';
+  if (handle === 'r') return 'right';
+  if (handle === 'b') return 'bottom';
+  if (handle === 'l') return 'left';
+  return undefined;
+};
+
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
@@ -75,6 +91,8 @@ const minifyGraph = (state: GraphState): MinifiedGraph => ({
     ...(edge.data?.label ? { l: edge.data.label } : {}),
     ...(minifyDirection(edge.data?.direction) ? { d: minifyDirection(edge.data?.direction) } : {}),
     ...(minifyLabelMode(edge.data?.labelMode, edge.data?.showEndpoints) ? { m: minifyLabelMode(edge.data?.labelMode, edge.data?.showEndpoints) } : {}),
+    ...(minifyHandle(edge.sourceHandle) ? { a: minifyHandle(edge.sourceHandle) } : {}),
+    ...(minifyHandle(edge.targetHandle) ? { z: minifyHandle(edge.targetHandle) } : {}),
     ...(edge.data?.showEndpoints ? { x: 1 as const } : {}),
   })),
 });
@@ -101,6 +119,8 @@ const expandGraph = (graph: MinifiedGraph): GraphState => {
       target: edge.t,
       data,
       label: edge.l,
+      sourceHandle: expandHandle(edge.a),
+      targetHandle: expandHandle(edge.z),
     };
   });
 

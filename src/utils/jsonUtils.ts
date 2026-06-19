@@ -64,6 +64,8 @@ const normalizeEdge = (value: unknown, nodeIds: Set<string>): ArchitectureEdge |
     target: value.target,
     data,
     label,
+    ...(typeof value.sourceHandle === 'string' ? { sourceHandle: value.sourceHandle } : {}),
+    ...(typeof value.targetHandle === 'string' ? { targetHandle: value.targetHandle } : {}),
   };
 };
 
@@ -88,6 +90,8 @@ export const toExportableGraph = (graph: GraphState): GraphState => ({
     id: edge.id,
     source: edge.source,
     target: edge.target,
+    sourceHandle: edge.sourceHandle,
+    targetHandle: edge.targetHandle,
     data: {
       direction: edge.data?.direction ?? 'forward',
       label: edge.data?.label,

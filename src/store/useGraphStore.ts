@@ -28,6 +28,91 @@ const shouldRecordNodeChange = (change: NodeChange<ArchitectureNode>) => {
   return true;
 };
 
+const getNodeSearchText = (node: ArchitectureNode) =>
+  `${node.data.kind} ${node.data.category} ${node.data.label} ${node.data.subtitle} ${node.data.note ?? ''}`.toLowerCase();
+
+const getSemanticLayer = (node: ArchitectureNode) => {
+  const text = getNodeSearchText(node);
+
+  if (/\b(front|frontend|react|ui|browser|client)\b/.test(text)) return 0;
+  if (/\b(api client|proxy|gateway|entry|nginx|load balancer|loadbalancer|firewall)\b/.test(text)) return 1;
+  if (/\b(backend|api|server|docker|container|wsl|runtime)\b/.test(text)) return 2;
+  if (/\b(service|controller|common|security|auth|admin|customer|project|document|role|user)\b/.test(text)) return 3;
+  if (/\b(queue|event|topic|stream|notification|audit|batch|worker|scheduler)\b/.test(text)) return 4;
+  if (/\b(db|database|mssql|oracle|mariadb|postgres|mongodb|redis|storage|file|table|seaweed)\b/.test(text)) return 5;
+  if (/\b(aws|azure|gcp|cloud|external|third-party|third party)\b/.test(text)) return 6;
+
+  if (node.data.category === 'Database') return 5;
+  if (node.data.category === 'Cloud') return 6;
+  if (node.data.category === 'Network') return 1;
+  if (node.data.category === 'Server') return 2;
+  return 3;
+};
+
+const getGraphDepth = (nodes: ArchitectureNode[], edges: ArchitectureEdge[]) => {
+  const incoming = new Map(nodes.map((node) => [node.id, 0]));
+  const outgoing = new Map<string, string[]>();
+
+  edges.forEach((edge) => {
+    incoming.set(edge.target, (incoming.get(edge.target) ?? 0) + 1);
+    outgoing.set(edge.source, [...(outgoing.get(edge.source) ?? []), edge.target]);
+  });
+
+  const depth = new Map<string, number>();
+  const queue = nodes.filter((node) => (incoming.get(node.id) ?? 0) === 0).map((node) => node.id);
+  const roots = queue.length > 0 ? queue : nodes.map((node) => node.id);
+
+  roots.forEach((nodeId) => depth.set(nodeId, 0));
+
+  for (let index = 0; index < roots.length; index += 1) {
+    const nodeId = roots[index];
+    const nextDepth = (depth.get(nodeId) ?? 0) + 1;
+
+    if (nextDepth > nodes.length) continue;
+
+    (outgoing.get(nodeId) ?? []).forEach((targetId) => {
+      if ((depth.get(targetId) ?? -1) < nextDepth) {
+        depth.set(targetId, nextDepth);
+        roots.push(targetId);
+      }
+    });
+  }
+
+  nodes.forEach((node) => {
+    if (!depth.has(node.id)) depth.set(node.id, getSemanticLayer(node));
+  });
+
+  return depth;
+};
+
+const getEdgeHandles = (source?: ArchitectureNode, target?: ArchitectureNode) => {
+  if (!source || !target) return {};
+
+  const dx = target.position.x - source.position.x;
+  const dy = target.position.y - source.position.y;
+
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    return dx >= 0
+      ? { sourceHandle: 'right', targetHandle: 'left' }
+      : { sourceHandle: 'left', targetHandle: 'right' };
+  }
+
+  return dy >= 0
+    ? { sourceHandle: 'bottom', targetHandle: 'top' }
+    : { sourceHandle: 'top', targetHandle: 'bottom' };
+};
+
+const applyDirectionalHandles = (nodes: ArchitectureNode[], edges: ArchitectureEdge[]) =>
+  edges.map((edge) => {
+    const source = nodes.find((node) => node.id === edge.source);
+    const target = nodes.find((node) => node.id === edge.target);
+
+    return {
+      ...edge,
+      ...getEdgeHandles(source, target),
+    };
+  });
+
 interface GraphStore extends GraphState {
   selectedNodeId: string | null;
   selectedEdgeId: string | null;
@@ -199,59 +284,47 @@ export const useGraphStore = create<GraphStore>((set) => ({
       if (state.nodes.length === 0) return state;
 
       const pastState = pushHistory(state);
-      const incoming = new Map(state.nodes.map((node) => [node.id, 0]));
-      const outgoing = new Map<string, string[]>();
-
-      state.edges.forEach((edge) => {
-        incoming.set(edge.target, (incoming.get(edge.target) ?? 0) + 1);
-        outgoing.set(edge.source, [...(outgoing.get(edge.source) ?? []), edge.target]);
-      });
-
-      const depth = new Map<string, number>();
-      const queue = state.nodes.filter((node) => (incoming.get(node.id) ?? 0) === 0).map((node) => node.id);
-
-      state.nodes.forEach((node) => {
-        if (!queue.includes(node.id)) depth.set(node.id, 0);
-      });
-
-      queue.forEach((nodeId) => depth.set(nodeId, 0));
-
-      for (let index = 0; index < queue.length; index += 1) {
-        const nodeId = queue[index];
-        const nextDepth = (depth.get(nodeId) ?? 0) + 1;
-
-        // Prevent infinite loops in circular graphs by capping depth
-        if (nextDepth > state.nodes.length) continue;
-
-        (outgoing.get(nodeId) ?? []).forEach((targetId) => {
-          if ((depth.get(targetId) ?? -1) < nextDepth) {
-            depth.set(targetId, nextDepth);
-            queue.push(targetId);
-          }
-        });
-      }
+      const depth = getGraphDepth(state.nodes, state.edges);
 
       const columns = new Map<number, ArchitectureNode[]>();
       state.nodes.forEach((node) => {
-        const column = depth.get(node.id) ?? 0;
+        const column = Math.max(depth.get(node.id) ?? 0, getSemanticLayer(node));
         columns.set(column, [...(columns.get(column) ?? []), node]);
       });
 
+      const sortedColumns = Array.from(columns.keys()).sort((first, second) => first - second);
+      const columnIndex = new Map(sortedColumns.map((column, index) => [column, index]));
+      const sortedColumnNodes = new Map(
+        Array.from(columns.entries()).map(([column, columnNodes]) => [
+          column,
+          [...columnNodes].sort((first, second) => {
+            const firstLayer = getSemanticLayer(first);
+            const secondLayer = getSemanticLayer(second);
+            if (firstLayer !== secondLayer) return firstLayer - secondLayer;
+            return first.data.label.localeCompare(second.data.label);
+          }),
+        ]),
+      );
+
       const nodes = state.nodes.map((node) => {
-        const column = depth.get(node.id) ?? 0;
-        const columnNodes = columns.get(column) ?? [];
+        const column = Math.max(depth.get(node.id) ?? 0, getSemanticLayer(node));
+        const columnNodes = sortedColumnNodes.get(column) ?? [];
         const row = columnNodes.findIndex((item) => item.id === node.id);
+        const compactColumn = columnIndex.get(column) ?? column;
 
         return {
           ...node,
-          position: { x: 80 + column * 280, y: 70 + row * 150 },
+          position: { x: 80 + compactColumn * 320, y: 90 + row * 180 },
           selected: false,
         };
       });
+      const edges = applyDirectionalHandles(nodes, state.edges);
+      const graph = presentGraph({ nodes, edges });
 
       return {
         ...pastState,
-        nodes,
+        nodes: graph.nodes,
+        edges: graph.edges,
         selectedNodeId: null,
         selectedEdgeId: null,
         canUndo: pastState.past.length > 0,
