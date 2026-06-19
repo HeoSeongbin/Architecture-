@@ -134,7 +134,8 @@ body {
 
   .architecture-edge-label {
     @apply pointer-events-none absolute z-10 flex max-w-44 flex-col items-center rounded border border-slate-200 bg-white/95 px-2 py-1 text-center text-[11px] font-semibold leading-tight text-slate-700 shadow-sm;
-    transform-origin: 0 0;
+    transform-origin: center center;
+    will-change: transform;
   }
 
   .architecture-edge-label span {

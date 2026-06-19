@@ -38,6 +38,7 @@ export interface ArchitectureEdgeData extends Record<string, unknown> {
   handleMode?: 'auto' | 'manual';
   label?: string;
   labelMode?: 'hidden' | 'protocol' | 'compact' | 'full';
+  labelOrientation?: 'auto' | 'horizontal' | 'vertical' | 'verticalClockwise' | 'verticalCounterclockwise';
   labelOffsetX?: number;
   labelOffsetY?: number;
   manualLabelOffsetX?: number;
@@ -74,6 +75,7 @@ export interface MinifiedEdge {
   d?: 'r' | 'b';
   h?: 1;
   m?: 'h' | 'c' | 'f';
+  r?: 'h' | 'v' | 'w';
   ox?: number;
   oy?: number;
   a?: 't' | 'r' | 'b' | 'l';

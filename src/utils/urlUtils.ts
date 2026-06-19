@@ -38,6 +38,20 @@ const expandLabelMode = (labelMode?: MinifiedEdge['m'], showEndpoints?: boolean)
   return showEndpoints ? 'compact' : 'protocol';
 };
 
+const minifyLabelOrientation = (orientation?: ArchitectureEdgeData['labelOrientation']) => {
+  if (orientation === 'horizontal') return 'h';
+  if (orientation === 'vertical' || orientation === 'verticalClockwise') return 'v';
+  if (orientation === 'verticalCounterclockwise') return 'w';
+  return undefined;
+};
+
+const expandLabelOrientation = (orientation?: MinifiedEdge['r']): ArchitectureEdgeData['labelOrientation'] => {
+  if (orientation === 'h') return 'horizontal';
+  if (orientation === 'v') return 'verticalClockwise';
+  if (orientation === 'w') return 'verticalCounterclockwise';
+  return 'auto';
+};
+
 const minifyHandle = (handle?: string | null): MinifiedEdge['a'] => {
   if (handle === 'top') return 't';
   if (handle === 'right') return 'r';
@@ -97,6 +111,7 @@ const minifyGraph = (state: GraphState): MinifiedGraph => ({
     ...(edge.data?.label ? { l: edge.data.label } : {}),
     ...(minifyDirection(edge.data?.direction) ? { d: minifyDirection(edge.data?.direction) } : {}),
     ...(minifyLabelMode(edge.data?.labelMode, edge.data?.showEndpoints) ? { m: minifyLabelMode(edge.data?.labelMode, edge.data?.showEndpoints) } : {}),
+    ...(minifyLabelOrientation(edge.data?.labelOrientation) ? { r: minifyLabelOrientation(edge.data?.labelOrientation) } : {}),
     ...(edge.data?.handleMode === 'manual' ? { h: 1 as const } : {}),
     ...(edge.data?.manualLabelOffsetX ? { ox: Math.round(edge.data.manualLabelOffsetX) } : {}),
     ...(edge.data?.manualLabelOffsetY ? { oy: Math.round(edge.data.manualLabelOffsetY) } : {}),
@@ -122,6 +137,7 @@ const expandGraph = (graph: MinifiedGraph): GraphState => {
       direction: expandDirection(edge.d),
       label: edge.l,
       labelMode: expandLabelMode(edge.m, edge.x === 1),
+      labelOrientation: expandLabelOrientation(edge.r),
       handleMode: edge.h === 1 ? 'manual' : 'auto',
       manualLabelOffsetX: edge.ox,
       manualLabelOffsetY: edge.oy,

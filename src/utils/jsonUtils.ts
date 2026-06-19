@@ -64,7 +64,18 @@ const normalizeEdge = (value: unknown, nodeIds: Set<string>): ArchitectureEdge |
       : showEndpoints
         ? 'compact'
         : 'protocol';
-  const data: ArchitectureEdge['data'] = { direction, label, labelMode, showEndpoints: labelMode !== 'protocol' };
+  const rawLabelOrientation =
+    isRecord(value.data) && typeof value.data.labelOrientation === 'string' ? value.data.labelOrientation : undefined;
+  const labelOrientation =
+    rawLabelOrientation === 'vertical'
+      ? 'verticalClockwise'
+      : rawLabelOrientation === 'horizontal' ||
+          rawLabelOrientation === 'verticalClockwise' ||
+          rawLabelOrientation === 'verticalCounterclockwise' ||
+          rawLabelOrientation === 'auto'
+        ? rawLabelOrientation
+        : 'auto';
+  const data: ArchitectureEdge['data'] = { direction, label, labelMode, labelOrientation, showEndpoints: labelMode !== 'protocol' };
   if (isRecord(value.data) && value.data.handleMode === 'manual') data.handleMode = 'manual';
   if (isRecord(value.data) && typeof value.data.manualLabelOffsetX === 'number') data.manualLabelOffsetX = value.data.manualLabelOffsetX;
   if (isRecord(value.data) && typeof value.data.manualLabelOffsetY === 'number') data.manualLabelOffsetY = value.data.manualLabelOffsetY;
@@ -118,6 +129,7 @@ export const toExportableGraph = (graph: GraphState): GraphState => ({
       handleMode: edge.data?.handleMode ?? 'auto',
       label: edge.data?.label,
       labelMode: edge.data?.labelMode ?? (edge.data?.showEndpoints ? 'compact' : 'protocol'),
+      labelOrientation: edge.data?.labelOrientation ?? 'auto',
       manualLabelOffsetX: edge.data?.manualLabelOffsetX ?? 0,
       manualLabelOffsetY: edge.data?.manualLabelOffsetY ?? 0,
       showEndpoints: edge.data?.showEndpoints ?? edge.data?.labelMode !== 'protocol',
