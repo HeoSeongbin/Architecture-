@@ -21,7 +21,8 @@ export type ArchitectureNodeKind =
   | 'loadbalancer'
   | 'firewall'
   | 'queue'
-  | 'group';
+  | 'group'
+  | 'block';
 
 export interface ArchitectureNodeData extends Record<string, unknown> {
   kind: ArchitectureNodeKind;
@@ -29,6 +30,7 @@ export interface ArchitectureNodeData extends Record<string, unknown> {
   subtitle: string;
   category: 'Database' | 'Server' | 'Application' | 'Cloud' | 'Network' | 'Group';
   accent: string;
+  isBlock?: boolean;
   isGroup?: boolean;
   note?: string;
 }
@@ -45,12 +47,13 @@ export interface ArchitectureEdgeData extends Record<string, unknown> {
   manualLabelOffsetY?: number;
   renderLabel?: string;
   routePoints?: Array<{ x: number; y: number }>;
+  routing?: 'avoid';
   showEndpoints?: boolean;
   sourceTerminalOffset?: number;
   targetTerminalOffset?: number;
 }
 
-export type ArchitectureNode = Node<ArchitectureNodeData, 'architectureNode' | 'groupNode'>;
+export type ArchitectureNode = Node<ArchitectureNodeData, 'architectureNode' | 'blockNode' | 'groupNode'>;
 export type ArchitectureEdge = Edge<ArchitectureEdgeData, 'architectureEdge'>;
 
 export interface GraphState {
@@ -83,9 +86,11 @@ export interface MinifiedEdge {
   a?: 't' | 'r' | 'b' | 'l';
   z?: 't' | 'r' | 'b' | 'l';
   x?: 1;
+  v?: 1;
 }
 
 export interface MinifiedGraph {
   n: MinifiedNode[];
   e: MinifiedEdge[];
 }
+

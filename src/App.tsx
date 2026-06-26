@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { Copy, Download, FileDown, Grid3X3, Link2, Network, Redo2, Trash2, Undo2, Upload, Wand2 } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Copy, Download, FileDown, Grid3X3, Link2, Network, Redo2, Route, Trash2, Undo2, Upload, Wand2 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { ReactFlowProvider } from '@xyflow/react';
 import { ArchitectureCanvas } from './components/ArchitectureCanvas';
@@ -35,6 +35,7 @@ export default function App() {
   const undo = useGraphStore((state) => state.undo);
   const redo = useGraphStore((state) => state.redo);
   const autoLayout = useGraphStore((state) => state.autoLayout);
+  const rerouteEdges = useGraphStore((state) => state.rerouteEdges);
   const setAllEdgeLabelModes = useGraphStore((state) => state.setAllEdgeLabelModes);
   const encodedState = encodeStateToUrl({ nodes, edges });
   const urlSize = encodedState.length;
@@ -191,6 +192,7 @@ export default function App() {
       if (!flowPane) throw new Error('React Flow pane not found');
 
       setImageLabel('Saving');
+      document.body.classList.add('is-exporting-diagram');
       const dataUrl = await toPng(flowPane, {
         backgroundColor: '#f8fafc',
         cacheBust: true,
@@ -204,8 +206,56 @@ export default function App() {
       setImageLabel('Failed');
     }
 
+    document.body.classList.remove('is-exporting-diagram');
     window.setTimeout(() => setImageLabel('PNG'), 1800);
   };
+
+  const rerouteVisibleCollisions = useCallback(() => {
+    const nodeRects = new Map(
+      nodes
+        .filter((node) => node.type === 'architectureNode')
+        .map((node) => {
+          const element = document.querySelector<HTMLElement>(`.react-flow__node[data-id="${node.id}"]`);
+          return element ? ([node.id, element.getBoundingClientRect()] as const) : undefined;
+        })
+        .filter((entry): entry is readonly [string, DOMRect] => Boolean(entry)),
+    );
+
+    const collidingEdgeIds = edges
+      .filter((edge) => {
+        const edgeElement = document.querySelector<SVGGElement>(`.react-flow__edge[data-id="${edge.id}"]`);
+        const path = edgeElement?.querySelector<SVGPathElement>('.react-flow__edge-path');
+        const matrix = typeof path?.getScreenCTM === 'function' ? path.getScreenCTM() : null;
+        if (!path || !matrix) return false;
+
+        const obstacleRects = Array.from(nodeRects.entries())
+          .filter(([nodeId]) => nodeId !== edge.source && nodeId !== edge.target)
+          .map(([, rect]) => rect);
+        if (obstacleRects.length === 0) return false;
+
+        const length = path.getTotalLength();
+        const samples = Math.max(8, Math.ceil(length / 18));
+
+        for (let index = 1; index < samples; index += 1) {
+          const point = path.getPointAtLength((length * index) / samples);
+          const screenPoint = new DOMPoint(point.x, point.y).matrixTransform(matrix);
+          const isInsideNode = obstacleRects.some(
+            (rect) =>
+              screenPoint.x > rect.left + 10 &&
+              screenPoint.x < rect.right - 10 &&
+              screenPoint.y > rect.top + 10 &&
+              screenPoint.y < rect.bottom - 10,
+          );
+
+          if (isInsideNode) return true;
+        }
+
+        return false;
+      })
+      .map((edge) => edge.id);
+
+    rerouteEdges(collidingEdgeIds);
+  }, [edges, nodes, rerouteEdges]);
 
   return (
     <ReactFlowProvider>
@@ -271,6 +321,10 @@ export default function App() {
                 <Grid3X3 size={17} aria-hidden />
                 <span className="optional-button-text">{showCanvasGrid ? 'Grid on' : 'Grid off'}</span>
               </button>
+              <button className="secondary-button" type="button" onClick={rerouteVisibleCollisions}>
+                <Route size={17} aria-hidden />
+                <span className="optional-button-text">Reroute</span>
+              </button>
               <select
                 aria-label="Edge label mode"
                 className="h-9 rounded border border-slate-200 bg-white px-2 text-sm font-medium text-slate-700 outline-none transition hover:border-slate-300 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
@@ -314,3 +368,4 @@ export default function App() {
     </ReactFlowProvider>
   );
 }
+

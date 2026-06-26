@@ -42,11 +42,21 @@ const getLabelRotation = (orientation: string) => {
   return '';
 };
 
-const applyTerminalOffset = (x: number, y: number, position: Position, offset = 0) => {
-  if (!offset) return { x, y };
-  if (position === Position.Top || position === Position.Bottom) return { x: x + offset, y };
-  return { x, y: y + offset };
+const getTerminalDelta = (position: Position, offset = 0) => {
+  if (!offset) return { x: 0, y: 0 };
+  if (position === Position.Top || position === Position.Bottom) return { x: offset, y: 0 };
+  return { x: 0, y: offset };
 };
+
+const applyTerminalOffset = (x: number, y: number, position: Position, offset = 0) => {
+  const delta = getTerminalDelta(position, offset);
+  return { x: x + delta.x, y: y + delta.y };
+};
+
+const shiftPoint = (point: { x: number; y: number }, delta: { x: number; y: number }) => ({
+  x: point.x + delta.x,
+  y: point.y + delta.y,
+});
 
 const getOffsetRoutePoints = (
   points: Array<{ x: number; y: number }>,
@@ -57,9 +67,14 @@ const getOffsetRoutePoints = (
 ) => {
   if (points.length < 2) return points;
 
+  const sourceDelta = getTerminalDelta(sourcePosition, sourceOffset);
+  const targetDelta = getTerminalDelta(targetPosition, targetOffset);
+
   return points.map((point, index) => {
-    if (index === 0) return applyTerminalOffset(point.x, point.y, sourcePosition, sourceOffset);
-    if (index === points.length - 1) return applyTerminalOffset(point.x, point.y, targetPosition, targetOffset);
+    if (index === 0) return shiftPoint(point, sourceDelta);
+    if (index === points.length - 1) return shiftPoint(point, targetDelta);
+    if (points.length > 3 && index === 1) return shiftPoint(point, sourceDelta);
+    if (points.length > 3 && index === points.length - 2) return shiftPoint(point, targetDelta);
     return point;
   });
 };
@@ -137,3 +152,4 @@ export function ArchitectureEdge({
     </>
   );
 }
+

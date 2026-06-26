@@ -118,13 +118,14 @@ const minifyGraph = (state: GraphState): MinifiedGraph => ({
     ...(minifyHandle(edge.sourceHandle) ? { a: minifyHandle(edge.sourceHandle) } : {}),
     ...(minifyHandle(edge.targetHandle) ? { z: minifyHandle(edge.targetHandle) } : {}),
     ...(edge.data?.showEndpoints ? { x: 1 as const } : {}),
+    ...(edge.data?.routing === 'avoid' ? { v: 1 as const } : {}),
   })),
 });
 
 const expandGraph = (graph: MinifiedGraph): GraphState => {
   const nodes = graph.n.map<ArchitectureNode>((node) => ({
     id: node.i,
-    type: node.t === 'groupNode' ? 'groupNode' : 'architectureNode',
+    type: node.t === 'groupNode' ? 'groupNode' : node.t === 'blockNode' ? 'blockNode' : 'architectureNode',
     position: { x: node.p[0], y: node.p[1] },
     data: node.d,
     ...(node.g ? { parentId: node.g } : {}),
@@ -142,6 +143,7 @@ const expandGraph = (graph: MinifiedGraph): GraphState => {
       manualLabelOffsetX: edge.ox,
       manualLabelOffsetY: edge.oy,
       showEndpoints: edge.x === 1 || edge.m === 'c' || edge.m === 'f',
+      routing: edge.v === 1 ? 'avoid' : undefined,
     };
 
     return {
@@ -181,3 +183,4 @@ export const decodeStateFromUrl = (
     return { ok: false, state: { nodes: [], edges: [] }, error };
   }
 };
+

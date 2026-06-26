@@ -71,23 +71,23 @@ export const getEdgeVisuals = (
   };
 };
 
-const getSharedNodeKey = (edge: ArchitectureEdge) => edge.target || edge.source;
-
 const getRouteOffsets = (edges: ArchitectureEdge[]) => {
   const groups = new Map<string, ArchitectureEdge[]>();
 
   edges.forEach((edge) => {
-    const key = getSharedNodeKey(edge);
+    const key = `${edge.source}->${edge.target}`;
     groups.set(key, [...(groups.get(key) ?? []), edge]);
   });
 
   const offsets = new Map<string, number>();
   groups.forEach((group) => {
+    if (group.length < 2) return;
+
     const sorted = [...group].sort((first, second) => first.id.localeCompare(second.id));
     const center = (sorted.length - 1) / 2;
 
     sorted.forEach((edge, index) => {
-      offsets.set(edge.id, 18 + Math.abs(index - center) * 10);
+      offsets.set(edge.id, 18 + Math.abs(index - center) * 12);
     });
   });
 
@@ -136,8 +136,8 @@ const getTerminalOffsets = (edges: ArchitectureEdge[]) => {
   const groups = new Map<string, Array<{ edge: ArchitectureEdge; terminal: 'source' | 'target' }>>();
 
   edges.forEach((edge) => {
-    const sourceKey = `source:${edge.source}:${edge.sourceHandle ?? 'right'}`;
-    const targetKey = `target:${edge.target}:${edge.targetHandle ?? 'left'}`;
+    const sourceKey = `${edge.source}:${edge.sourceHandle ?? 'right'}`;
+    const targetKey = `${edge.target}:${edge.targetHandle ?? 'left'}`;
 
     groups.set(sourceKey, [...(groups.get(sourceKey) ?? []), { edge, terminal: 'source' }]);
     groups.set(targetKey, [...(groups.get(targetKey) ?? []), { edge, terminal: 'target' }]);
@@ -148,12 +148,16 @@ const getTerminalOffsets = (edges: ArchitectureEdge[]) => {
   groups.forEach((group) => {
     if (group.length < 2) return;
 
-    const sorted = [...group].sort((first, second) => first.edge.id.localeCompare(second.edge.id));
+    const sorted = [...group].sort((first, second) => {
+      const edgeOrder = first.edge.id.localeCompare(second.edge.id);
+      if (edgeOrder !== 0) return edgeOrder;
+      return first.terminal.localeCompare(second.terminal);
+    });
     const center = (sorted.length - 1) / 2;
 
     sorted.forEach((item, index) => {
       const current = offsets.get(item.edge.id) ?? { source: 0, target: 0 };
-      const offset = (index - center) * 14;
+      const offset = (index - center) * 16;
 
       offsets.set(item.edge.id, {
         ...current,
@@ -200,3 +204,4 @@ export const presentGraph = (graph: GraphState): GraphState => ({
   nodes: graph.nodes,
   edges: applyEdgePresentation(graph.nodes, graph.edges),
 });
+

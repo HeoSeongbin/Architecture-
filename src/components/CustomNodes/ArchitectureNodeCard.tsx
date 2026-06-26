@@ -36,6 +36,7 @@ const iconByKind = {
   firewall: Shield,
   queue: Workflow,
   group: Server,
+  block: Server,
 };
 
 const connectionHandles = [
@@ -73,3 +74,4 @@ export function ArchitectureNodeCard({ data, selected }: NodeProps<ArchitectureN
     </div>
   );
 }
+

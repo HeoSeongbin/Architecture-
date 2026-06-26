@@ -24,7 +24,7 @@ const normalizeNode = (value: unknown): ArchitectureNode | null => {
 
   const width = isRecord(value.style) && typeof value.style.width === 'number' ? value.style.width : undefined;
   const height = isRecord(value.style) && typeof value.style.height === 'number' ? value.style.height : undefined;
-  const type = value.type === 'groupNode' || data.kind === 'group' || data.isGroup === true ? 'groupNode' : 'architectureNode';
+  const type = value.type === 'groupNode' || data.kind === 'group' || data.isGroup === true ? 'groupNode' : value.type === 'blockNode' || data.kind === 'block' || data.isBlock === true ? 'blockNode' : 'architectureNode';
 
   return {
     id: value.id,
@@ -36,6 +36,7 @@ const normalizeNode = (value: unknown): ArchitectureNode | null => {
       subtitle: data.subtitle,
       category: data.category as ArchitectureNode['data']['category'],
       accent: data.accent,
+      ...(data.isBlock === true ? { isBlock: true } : {}),
       ...(data.isGroup === true ? { isGroup: true } : {}),
       ...(typeof data.note === 'string' ? { note: data.note } : {}),
     },
@@ -79,6 +80,7 @@ const normalizeEdge = (value: unknown, nodeIds: Set<string>): ArchitectureEdge |
   if (isRecord(value.data) && value.data.handleMode === 'manual') data.handleMode = 'manual';
   if (isRecord(value.data) && typeof value.data.manualLabelOffsetX === 'number') data.manualLabelOffsetX = value.data.manualLabelOffsetX;
   if (isRecord(value.data) && typeof value.data.manualLabelOffsetY === 'number') data.manualLabelOffsetY = value.data.manualLabelOffsetY;
+  if (isRecord(value.data) && value.data.routing === 'avoid') data.routing = 'avoid';
 
   return {
     id: value.id,
@@ -132,8 +134,10 @@ export const toExportableGraph = (graph: GraphState): GraphState => ({
       labelOrientation: edge.data?.labelOrientation ?? 'auto',
       manualLabelOffsetX: edge.data?.manualLabelOffsetX ?? 0,
       manualLabelOffsetY: edge.data?.manualLabelOffsetY ?? 0,
+      routing: edge.data?.routing,
       showEndpoints: edge.data?.showEndpoints ?? edge.data?.labelMode !== 'protocol',
     },
     label: edge.data?.label,
   })),
 });
+

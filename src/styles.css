@@ -34,6 +34,14 @@ body {
     @apply rounded-sm;
   }
 
+  .block-asset-button {
+    @apply bg-slate-50;
+  }
+
+  .block-asset-swatch {
+    @apply rounded-sm;
+  }
+
   .icon-button {
     @apply grid h-9 w-9 place-items-center rounded border border-slate-200 bg-white text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950;
   }
@@ -130,6 +138,36 @@ body {
     @apply !h-3 !w-3 !border-2 !border-white;
   }
 
+  .group-node-handle {
+    @apply !h-3 !w-3 !border-2 !border-white;
+    background: var(--node-accent) !important;
+  }
+
+  .block-node {
+    @apply h-full w-full rounded border bg-white/90 p-3 shadow-sm transition;
+    border-color: color-mix(in srgb, var(--node-accent) 42%, white);
+    border-left: 5px solid var(--node-accent);
+    min-height: 96px;
+    min-width: 160px;
+  }
+
+  .block-node-selected {
+    @apply shadow-md ring-2 ring-slate-300;
+    border-color: color-mix(in srgb, var(--node-accent) 70%, #0f172a);
+  }
+
+  .block-node-title {
+    @apply truncate text-sm font-semibold text-slate-950;
+  }
+
+  .block-node-subtitle {
+    @apply mt-1 truncate text-xs font-medium uppercase tracking-wide text-slate-500;
+  }
+
+  .block-node-note {
+    @apply mt-3 line-clamp-3 text-xs leading-relaxed text-slate-500;
+  }
+
   .node-icon {
     @apply grid h-10 w-10 shrink-0 place-items-center rounded text-white shadow-sm;
     background: var(--node-accent);
@@ -158,6 +196,12 @@ body {
     @apply border-slate-400 bg-slate-50 text-slate-950 ring-2 ring-slate-300;
   }
 
+}
+
+.is-exporting-diagram .react-flow__handle,
+.is-exporting-diagram .react-flow__resize-control,
+.is-exporting-diagram .group-resize-handle {
+  opacity: 0 !important;
 }
 
 .react-flow__attribution {
@@ -203,3 +247,4 @@ body {
     padding-bottom: 0.125rem;
   }
 }
+

@@ -14,12 +14,14 @@ import {
 import '@xyflow/react/dist/style.css';
 import { ArchitectureEdge } from './CustomEdges/ArchitectureEdge';
 import { ArchitectureNodeCard } from './CustomNodes/ArchitectureNodeCard';
+import { BlockNodeCard } from './CustomNodes/BlockNodeCard';
 import { GroupNodeCard } from './CustomNodes/GroupNodeCard';
 import { useGraphStore } from '../store/useGraphStore';
 import type { ArchitectureEdge as ArchitectureEdgeType, ArchitectureNode, ArchitectureNodeData } from '../types/graph';
 
 const nodeTypes: NodeTypes = {
   architectureNode: ArchitectureNodeCard,
+  blockNode: BlockNodeCard,
   groupNode: GroupNodeCard,
 };
 
@@ -30,6 +32,11 @@ const edgeTypes: EdgeTypes = {
 const defaultGroupSize = {
   height: 320,
   width: 520,
+};
+
+const defaultBlockSize = {
+  height: 120,
+  width: 240,
 };
 
 const getNodeSize = (node: ArchitectureNode) => ({
@@ -107,16 +114,18 @@ export function ArchitectureCanvas({ showGrid }: ArchitectureCanvasProps) {
 
       const asset = JSON.parse(rawAsset) as ArchitectureNodeData;
       const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+      const isBlock = asset.isBlock || asset.kind === 'block';
       const isGroup = asset.isGroup || asset.kind === 'group';
       const parentGroup = isGroup ? undefined : findGroupAtPosition(position, nodes);
       const parentPosition = parentGroup ? getAbsolutePosition(parentGroup, nodes) : undefined;
       const node: ArchitectureNode = {
         id: `${asset.kind}-${crypto.randomUUID().slice(0, 8)}`,
-        type: isGroup ? 'groupNode' : 'architectureNode',
+        type: isGroup ? 'groupNode' : isBlock ? 'blockNode' : 'architectureNode',
         position: parentPosition ? { x: position.x - parentPosition.x, y: position.y - parentPosition.y } : position,
         data: asset,
         zIndex: isGroup ? 0 : 1,
         ...(isGroup ? { style: defaultGroupSize } : {}),
+        ...(isBlock ? { style: defaultBlockSize } : {}),
         ...(parentGroup ? { parentId: parentGroup.id } : {}),
       };
 
@@ -164,3 +173,4 @@ export function ArchitectureCanvas({ showGrid }: ArchitectureCanvasProps) {
     </div>
   );
 }
+

@@ -1,6 +1,8 @@
-import { NodeResizer, type NodeProps } from '@xyflow/react';
+import { Handle, NodeResizer, Position, type NodeProps } from '@xyflow/react';
 import type { CSSProperties } from 'react';
 import type { ArchitectureNode } from '../../types/graph';
+
+const connectionHandles = [Position.Top, Position.Right, Position.Bottom, Position.Left];
 
 export function GroupNodeCard({ data, selected }: NodeProps<ArchitectureNode>) {
   return (
@@ -8,6 +10,9 @@ export function GroupNodeCard({ data, selected }: NodeProps<ArchitectureNode>) {
       className={`group-node ${selected ? 'group-node-selected' : ''}`}
       style={{ '--node-accent': data.accent } as CSSProperties}
     >
+      {connectionHandles.map((position) => (
+        <Handle className="group-node-handle" id={position} key={position} position={position} type="source" />
+      ))}
       <NodeResizer
         color={data.accent}
         handleClassName="group-resize-handle"
@@ -26,3 +31,4 @@ export function GroupNodeCard({ data, selected }: NodeProps<ArchitectureNode>) {
     </div>
   );
 }
+

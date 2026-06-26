@@ -12,6 +12,16 @@ const categoryIcon = {
   Group: Layers3,
 };
 
+const blockAsset: ArchitectureNodeData = {
+  kind: 'block',
+  label: 'Block Card',
+  subtitle: 'Label area without connection lines',
+  category: 'Group',
+  accent: '#334155',
+  isBlock: true,
+  note: 'Use this as a freeform block, lane label, note, or visual boundary without edge handles.',
+};
+
 const groupAsset: ArchitectureNodeData = {
   kind: 'group',
   label: 'Group Card',
@@ -73,19 +83,34 @@ export function Sidebar() {
             <Layers3 size={14} aria-hidden />
             <span>Diagram Groups</span>
           </div>
-          <button
-            className="asset-button group-asset-button"
-            draggable
-            onDragStart={(event) => onDragStart(event, groupAsset)}
-            style={{ borderLeftColor: groupAsset.accent }}
-            type="button"
-          >
-            <span className="asset-swatch group-asset-swatch" style={{ backgroundColor: groupAsset.accent }} />
-            <span className="min-w-0 text-left">
-              <span className="block truncate text-sm font-medium">{groupAsset.label}</span>
-              <span className="block truncate text-xs text-slate-500">{groupAsset.subtitle}</span>
-            </span>
-          </button>
+          <div className="space-y-2">
+            <button
+              className="asset-button group-asset-button"
+              draggable
+              onDragStart={(event) => onDragStart(event, groupAsset)}
+              style={{ borderLeftColor: groupAsset.accent }}
+              type="button"
+            >
+              <span className="asset-swatch group-asset-swatch" style={{ backgroundColor: groupAsset.accent }} />
+              <span className="min-w-0 text-left">
+                <span className="block truncate text-sm font-medium">{groupAsset.label}</span>
+                <span className="block truncate text-xs text-slate-500">{groupAsset.subtitle}</span>
+              </span>
+            </button>
+            <button
+              className="asset-button block-asset-button"
+              draggable
+              onDragStart={(event) => onDragStart(event, blockAsset)}
+              style={{ borderLeftColor: blockAsset.accent }}
+              type="button"
+            >
+              <span className="asset-swatch block-asset-swatch" style={{ backgroundColor: blockAsset.accent }} />
+              <span className="min-w-0 text-left">
+                <span className="block truncate text-sm font-medium">{blockAsset.label}</span>
+                <span className="block truncate text-xs text-slate-500">{blockAsset.subtitle}</span>
+              </span>
+            </button>
+          </div>
         </section>
 
         {filteredAssets.length === 0 ? (
@@ -124,3 +149,4 @@ export function Sidebar() {
     </aside>
   );
 }
+
