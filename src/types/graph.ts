@@ -34,6 +34,10 @@ export interface ArchitectureNodeData extends Record<string, unknown> {
 }
 
 export interface ArchitectureEdgeData extends Record<string, unknown> {
+  lineStyle?: 'solid' | 'dashed' | 'dotted';
+  pathStyle?: 'smoothstep' | 'step' | 'straight';
+  color?: string;
+  arrowStyle?: 'closed' | 'open' | 'none';
   direction?: 'forward' | 'reverse' | 'bidirectional';
   handleMode?: 'auto' | 'manual';
   label?: string;
@@ -70,6 +74,10 @@ export interface MinifiedNode {
 }
 
 export interface MinifiedEdge {
+  c?: string;
+  k?: ArchitectureEdgeData['lineStyle'];
+  q?: ArchitectureEdgeData['pathStyle'];
+  u?: ArchitectureEdgeData['arrowStyle'];
   i: string;
   s: string;
   t: string;
@@ -86,6 +94,7 @@ export interface MinifiedEdge {
 }
 
 export interface MinifiedGraph {
+  v?: number;
   n: MinifiedNode[];
   e: MinifiedEdge[];
 }

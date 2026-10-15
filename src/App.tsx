@@ -1,3 +1,8 @@
+import { useGraphPersistence } from './hooks/useGraphPersistence';
+import { ReplaceGraphDialog } from './components/ReplaceGraphDialog';
+import { DEFAULT_LAYOUT } from './utils/layoutGraph';
+import { DATA_VERSION, GRAPH_LIMITS, URL_MAX_LENGTH } from './utils/graphValidation';
+import type { GraphState } from './types/graph';
 import { useEffect, useRef, useState } from 'react';
 import { toPng } from 'html-to-image';
 import { ReactFlowProvider } from '@xyflow/react';
@@ -6,15 +11,17 @@ import { Inspector } from './components/Inspector';
 import { Sidebar } from './components/Sidebar';
 import { sampleGraph } from './data/sampleGraph';
 import { useGraphStore } from './store/useGraphStore';
-import { normalizeImportedGraph, toExportableGraph } from './utils/jsonUtils';
-import { decodeStateFromUrl, encodeStateToUrl } from './utils/urlUtils';
+import { parseImportedGraph, toExportableGraph } from './utils/jsonUtils';
+import { encodeStateToUrl } from './utils/urlUtils';
 import { EditorToolbar } from './components/EditorToolbar';
 import { useEditorTheme } from './hooks/useEditorTheme';
 import { useNarrowScreen } from './hooks/useNarrowScreen';
 
 export default function App() {
-  const [isHydrated, setIsHydrated] = useState(false);
-  const [urlError, setUrlError] = useState(false);
+  const persistence = useGraphPersistence();
+  const [replacement, setReplacement] = useState<{ title: string; graph: GraphState } | null>(null);
+  const [layoutOptions, setLayoutOptions] = useState(DEFAULT_LAYOUT);
+  const importRequest = useRef(0);
   const [feedback, setFeedback] = useState({
     text: '변경 내용은 URL에 자동 반영됩니다. 파일 백업은 JSON 내보내기를 이용하세요.',
     error: false,
@@ -25,11 +32,9 @@ export default function App() {
   const narrow = useNarrowScreen();
   const panelOpener = useRef<HTMLElement | null>(null);
   const notify = (text: string, error = false) => {
-    setUrlError(false);
     setFeedback({ text, error });
   };
   const [showCanvasGrid, setShowCanvasGrid] = useState(true);
-  const replaceTimer = useRef<number | undefined>(undefined);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const nodes = useGraphStore((state) => state.nodes);
   const edges = useGraphStore((state) => state.edges);
@@ -39,37 +44,8 @@ export default function App() {
   const redo = useGraphStore((state) => state.redo);
   const autoLayout = useGraphStore((state) => state.autoLayout);
   const setAllEdgeLabelModes = useGraphStore((state) => state.setAllEdgeLabelModes);
-  const encodedState = encodeStateToUrl({ nodes, edges });
-  const urlSize = encodedState.length;
   const edgeLabelModes = new Set(edges.map((edge) => edge.data?.labelMode ?? (edge.data?.showEndpoints ? 'compact' : 'protocol')));
   const globalLabelMode = edgeLabelModes.size === 1 ? Array.from(edgeLabelModes)[0] : 'mixed';
-
-  useEffect(() => {
-    const decoded = decodeStateFromUrl(window.location.hash);
-
-    if (decoded.ok) {
-      useGraphStore.getState().setGraph(decoded.state);
-      setUrlError(false);
-    } else {
-      useGraphStore.getState().setGraph({ nodes: [], edges: [] });
-      setUrlError(true);
-    }
-    setIsHydrated(true);
-
-    const unsubscribe = useGraphStore.subscribe((state) => {
-      window.clearTimeout(replaceTimer.current);
-      replaceTimer.current = window.setTimeout(() => {
-        const encoded = encodeStateToUrl({ nodes: state.nodes, edges: state.edges });
-        const nextUrl = `${window.location.pathname}${window.location.search}${encoded ? `#${encoded}` : ''}`;
-        window.history.replaceState(null, '', nextUrl);
-      }, 400);
-    });
-
-    return () => {
-      window.clearTimeout(replaceTimer.current);
-      unsubscribe();
-    };
-  }, []);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -81,14 +57,37 @@ export default function App() {
         setActivePanel(null);
         if (narrow && activePanel) panelOpener.current?.focus();
       }
+      if (document.querySelector('[role="alertdialog"]')) return;
       const isModifierPressed = event.ctrlKey || event.metaKey;
       const key = event.key.toLowerCase();
 
-      if (!isModifierPressed || (key !== 'z' && key !== 'y')) return;
-
       const target = event.target;
-      const isEditing = target instanceof Element && target.closest('input, textarea, [contenteditable]:not([contenteditable="false"])');
+      const isEditing =
+        target instanceof Element && target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])');
       if (isEditing) return;
+      const store = useGraphStore.getState();
+      if (key === 'delete' || key === 'backspace') {
+        if (
+          store.nodes.some((node) => node.selected) ||
+          store.selectedNodeId ||
+          store.edges.some((edge) => edge.selected) ||
+          store.selectedEdgeId
+        ) {
+          event.preventDefault();
+          store.deleteSelection();
+        }
+        return;
+      }
+      if (!isModifierPressed) return;
+      if (['a', 'c', 'v', 'd'].includes(key)) {
+        event.preventDefault();
+        if (key === 'a') store.selectAll();
+        if (key === 'c') store.copySelection();
+        if (key === 'v') store.pasteSelection();
+        if (key === 'd') store.duplicateSelection();
+        return;
+      }
+      if (key !== 'z' && key !== 'y') return;
 
       if (key === 'z' && event.shiftKey) {
         event.preventDefault();
@@ -110,23 +109,26 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [narrow, activePanel]);
 
-  const clearCanvas = () => {
-    useGraphStore.getState().replaceGraph({ nodes: [], edges: [] });
-    setUrlError(false);
-    notify('캔버스를 비웠습니다. 실행 취소로 이전 작업을 복원할 수 있습니다.');
+  const replace = (title: string, graph: GraphState) => {
+    const current = useGraphStore.getState();
+    if (current.nodes.length || current.edges.length) setReplacement({ title, graph });
+    else {
+      current.replaceGraph(graph);
+      persistence.flush();
+      notify('다이어그램을 불러왔습니다. 실행 취소로 복원할 수 있습니다.');
+    }
   };
-
-  const loadSample = () => {
-    useGraphStore.getState().replaceGraph(sampleGraph);
-    setUrlError(false);
-    notify('샘플을 불러왔습니다. 기존 작업은 실행 취소로 복원할 수 있습니다.');
-  };
+  const clearCanvas = () => replace('새 다이어그램으로 교체할까요?', { nodes: [], edges: [] });
+  const loadSample = () => replace('샘플로 교체할까요?', sampleGraph);
 
   const copyShareLink = async () => {
-    const encoded = encodeStateToUrl({ nodes: useGraphStore.getState().nodes, edges: useGraphStore.getState().edges });
-    const shareUrl = `${window.location.origin}${window.location.pathname}${window.location.search}${encoded ? `#${encoded}` : ''}`;
-
     try {
+      const encoded = encodeStateToUrl(useGraphStore.getState());
+      const shareUrl = `${window.location.origin}${window.location.pathname}${window.location.search}${encoded ? `#${encoded}` : ''}`;
+      if (shareUrl.length > URL_MAX_LENGTH) {
+        notify('공유 URL이 너무 깁니다. JSON으로 내보내세요.', true);
+        return;
+      }
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(shareUrl);
       } else {
@@ -158,7 +160,7 @@ export default function App() {
     link.rel = 'noopener';
     link.style.display = 'none';
     document.body.append(link);
-    link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+    link.click();
 
     window.setTimeout(() => {
       link.remove();
@@ -169,7 +171,7 @@ export default function App() {
   const exportJson = () => {
     try {
       const graph = toExportableGraph({ nodes: useGraphStore.getState().nodes, edges: useGraphStore.getState().edges });
-      const json = JSON.stringify(graph, null, 2);
+      const json = JSON.stringify({ version: DATA_VERSION, ...graph }, null, 2);
       const filename = `architecture-diagram-${new Date().toISOString().slice(0, 10)}.json`;
       const dataUrl = `data:application/json;charset=utf-8,${encodeURIComponent(json)}`;
       triggerDownload(dataUrl, filename);
@@ -184,16 +186,22 @@ export default function App() {
     event.target.value = '';
     if (!file) return;
 
+    const request = ++importRequest.current;
+    const before = JSON.stringify(toExportableGraph(useGraphStore.getState()));
     try {
-      const parsed = JSON.parse(await file.text()) as unknown;
-      const graph = normalizeImportedGraph(parsed);
-      if (!graph) throw new Error('Invalid graph');
-
-      useGraphStore.getState().replaceGraph(graph);
-      notify('JSON을 가져왔습니다. 이전 작업은 실행 취소로 복원할 수 있습니다.');
-      setUrlError(false);
-    } catch {
-      notify('올바른 다이어그램 JSON이 아닙니다. 현재 작업은 유지됩니다.', true);
+      if (file.size > GRAPH_LIMITS.bytes) throw new Error('JSON 파일은 5 MiB 이하여야 합니다.');
+      const text = await file.text();
+      if (new TextEncoder().encode(text).length > GRAPH_LIMITS.bytes) throw new Error('JSON 파일은 5 MiB 이하여야 합니다.');
+      const graph = parseImportedGraph(JSON.parse(text));
+      if (request !== importRequest.current) return;
+      if (before !== JSON.stringify(toExportableGraph(useGraphStore.getState()))) {
+        notify('파일을 읽는 동안 작업이 변경되어 가져오기를 중단했습니다. 다시 가져오세요.', true);
+        return;
+      }
+      replace('JSON 다이어그램으로 교체할까요?', graph);
+    } catch (error) {
+      if (request === importRequest.current)
+        notify(`올바른 다이어그램 JSON이 아닙니다. ${error instanceof Error ? error.message : ''} 현재 작업은 유지됩니다.`, true);
     }
   };
 
@@ -231,10 +239,18 @@ export default function App() {
   const layout = async () => {
     setBusy(true);
     try {
-      await autoLayout();
-      notify('자동 정렬 요청을 처리했습니다. 전체 보기로 배치를 확인하세요.');
-    } catch {
-      notify('자동 정렬을 완료하지 못했습니다.', true);
+      const result = await autoLayout(layoutOptions);
+      notify(
+        result === undefined
+          ? '정렬할 노드가 없습니다.'
+          : result === 'stale'
+            ? '정렬 중 작업이 변경되어 결과를 적용하지 않았습니다.'
+            : result === 'fallback'
+              ? '정렬 엔진 오류로 기본 배치를 적용했습니다. 실행 취소할 수 있습니다.'
+              : '자동 정렬을 적용했습니다. 전체 보기로 배치를 확인하세요.',
+      );
+    } catch (error) {
+      notify(error instanceof Error ? error.message : '자동 정렬을 완료하지 못했습니다.', true);
     } finally {
       setBusy(false);
     }
@@ -253,6 +269,8 @@ export default function App() {
           캔버스로 건너뛰기
         </a>
         <EditorToolbar
+          layoutOptions={layoutOptions}
+          setLayoutOptions={setLayoutOptions}
           canUndo={canUndo}
           canRedo={canRedo}
           undo={undo}
@@ -293,7 +311,7 @@ export default function App() {
             <Sidebar onAdded={narrow ? closePanel : undefined} />
           </div>
           <main id="diagram-workspace" className="editor-workspace" tabIndex={-1} aria-label="다이어그램 캔버스">
-            {isHydrated ? (
+            {persistence.hydrated ? (
               <ArchitectureCanvas showGrid={showCanvasGrid} theme={theme} />
             ) : (
               <div className="canvas-loading">다이어그램을 불러오는 중…</div>
@@ -308,16 +326,33 @@ export default function App() {
             <Inspector />
           </div>
         </div>
+        {(replacement || persistence.external) && (
+          <ReplaceGraphDialog
+            title={replacement?.title ?? '다른 공유 URL을 불러올까요?'}
+            cancel={() => {
+              setReplacement(null);
+              persistence.clearExternal();
+            }}
+            apply={() => {
+              const graph = replacement?.graph ?? persistence.external;
+              if (graph) useGraphStore.getState().replaceGraph(graph);
+              persistence.flush();
+              setReplacement(null);
+              persistence.clearExternal();
+              notify('다이어그램을 교체했습니다. 실행 취소로 복원할 수 있습니다.');
+            }}
+          />
+        )}
         <footer className="editor-footer">
-          {urlError ? (
-            <p role="alert">공유 URL을 복원하지 못했습니다. 링크를 확인하거나 JSON 백업을 가져오세요.</p>
+          {persistence.message ? (
+            <p role="alert">{persistence.message}</p>
           ) : (
             <p role={feedback.error ? 'alert' : 'status'} className={feedback.error ? 'feedback-error' : ''}>
               {feedback.text}
             </p>
           )}
           <span className="diagram-stats">
-            노드 {nodes.length} · 연결 {edges.length} · URL {urlSize.toLocaleString()}자
+            노드 {nodes.length} · 연결 {edges.length} · URL {persistence.urlSize.toLocaleString()}자
           </span>
         </footer>
       </div>

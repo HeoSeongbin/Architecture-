@@ -1,13 +1,35 @@
 import { create } from 'zustand';
 import { addEdge, applyEdgeChanges, applyNodeChanges, type Connection, type EdgeChange, type NodeChange } from '@xyflow/react';
-import type { CSSProperties } from 'react';
-import ELK from 'elkjs/lib/elk.bundled.js';
-import type { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk-api';
+import { layoutGraph, type LayoutOptions } from '../utils/layoutGraph';
 import type { ArchitectureEdge, ArchitectureEdgeData, ArchitectureNode, GraphState } from '../types/graph';
 import { presentGraph } from '../utils/edgeUtils';
+import { toExportableGraph } from '../utils/jsonUtils';
+import {
+  absolutePosition,
+  nodeSize,
+  isGroup,
+  orderParentsFirst,
+  reparentNodes,
+  removeElements,
+  copySubgraph,
+  pasteSubgraph,
+  alignNodes,
+  groupNodes,
+  nodeLimits,
+  type Alignment,
+} from '../utils/graphEditing';
 
 const HISTORY_LIMIT = 80;
 let pendingMove: GraphState | undefined;
+let pendingResize = false;
+const movedNodeIds = new Set<string>();
+let pasteCount = 0;
+let layoutRequest = 0;
+const resetTransform = () => {
+  pendingMove = undefined;
+  pendingResize = false;
+  movedNodeIds.clear();
+};
 
 const cloneGraph = (graph: GraphState): GraphState => ({
   nodes: structuredClone(graph.nodes),
@@ -20,93 +42,47 @@ const pushHistory = <T extends GraphStore>(state: T) => ({
 });
 
 const shouldRecordNodeChange = (change: NodeChange<ArchitectureNode>) => {
-  if (change.type === 'select' || change.type === 'dimensions') return false;
-  if (change.type === 'position') return change.dragging === false;
+  if (change.type === 'select') return false;
+  if (change.type === 'dimensions') return change.resizing === false || Boolean(change.setAttributes);
+  if (change.type === 'position') return change.dragging !== true && Boolean(change.position);
   return true;
 };
 
-const getNodeSearchText = (node: ArchitectureNode) =>
-  `${node.data.kind} ${node.data.category} ${node.data.label} ${node.data.subtitle} ${node.data.note ?? ''}`.toLowerCase();
-
-const getSemanticLayer = (node: ArchitectureNode) => {
-  const text = getNodeSearchText(node);
-
-  if (/\b(front|frontend|react|ui|browser|client)\b/.test(text)) return 0;
-  if (/\b(api client|proxy|gateway|entry|nginx|load balancer|loadbalancer|firewall)\b/.test(text)) return 1;
-  if (/\b(backend|api|server|docker|container|wsl|runtime)\b/.test(text)) return 2;
-  if (/\b(service|controller|common|security|auth|admin|customer|project|document|role|user)\b/.test(text)) return 3;
-  if (/\b(queue|event|topic|stream|notification|audit|batch|worker|scheduler)\b/.test(text)) return 4;
-  if (/\b(db|database|mssql|oracle|mariadb|postgres|mongodb|redis|storage|file|table|seaweed)\b/.test(text)) return 5;
-  if (/\b(aws|azure|gcp|cloud|external|third-party|third party)\b/.test(text)) return 6;
-
-  if (node.data.category === 'Database') return 5;
-  if (node.data.category === 'Cloud') return 6;
-  if (node.data.category === 'Network') return 1;
-  if (node.data.category === 'Server') return 2;
-  return 3;
-};
-
-const getGraphDepth = (nodes: ArchitectureNode[], edges: ArchitectureEdge[]) => {
-  const incoming = new Map(nodes.map((node) => [node.id, 0]));
-  const outgoing = new Map<string, string[]>();
-
-  edges.forEach((edge) => {
-    incoming.set(edge.target, (incoming.get(edge.target) ?? 0) + 1);
-    outgoing.set(edge.source, [...(outgoing.get(edge.source) ?? []), edge.target]);
-  });
-
-  const depth = new Map<string, number>();
-  const queue = nodes.filter((node) => (incoming.get(node.id) ?? 0) === 0).map((node) => node.id);
-  const roots = queue.length > 0 ? queue : nodes.map((node) => node.id);
-
-  roots.forEach((nodeId) => depth.set(nodeId, 0));
-
-  for (let index = 0; index < roots.length; index += 1) {
-    const nodeId = roots[index];
-    const nextDepth = (depth.get(nodeId) ?? 0) + 1;
-
-    if (nextDepth > nodes.length) continue;
-
-    (outgoing.get(nodeId) ?? []).forEach((targetId) => {
-      if ((depth.get(targetId) ?? -1) < nextDepth) {
-        depth.set(targetId, nextDepth);
-        roots.push(targetId);
+const selectedMoveRoots = (nodes: ArchitectureNode[]) => {
+  const roots: string[] = [];
+  for (const node of nodes) {
+    if (!movedNodeIds.has(node.id)) continue;
+    let parent = node.parentId;
+    const visited = new Set<string>();
+    let movedAncestor = false;
+    while (parent && !visited.has(parent)) {
+      if (movedNodeIds.has(parent)) {
+        movedAncestor = true;
+        break;
       }
-    });
+      visited.add(parent);
+      parent = nodes.find((item) => item.id === parent)?.parentId;
+    }
+    if (!movedAncestor) roots.push(node.id);
   }
-
-  nodes.forEach((node) => {
-    if (!depth.has(node.id)) depth.set(node.id, getSemanticLayer(node));
-  });
-
-  return depth;
+  return roots;
 };
-
-const getEdgeHandles = (source?: ArchitectureNode, target?: ArchitectureNode) => {
-  if (!source || !target) return {};
-
-  const dx = target.position.x - source.position.x;
-  const dy = target.position.y - source.position.y;
-
-  if (Math.abs(dx) >= Math.abs(dy)) {
-    return dx >= 0 ? { sourceHandle: 'right', targetHandle: 'left' } : { sourceHandle: 'left', targetHandle: 'right' };
-  }
-
-  return dy >= 0 ? { sourceHandle: 'bottom', targetHandle: 'top' } : { sourceHandle: 'top', targetHandle: 'bottom' };
+const graphSignature = (graph: GraphState) => JSON.stringify(toExportableGraph(graph));
+const selectionIds = (state: GraphStore) =>
+  new Set(state.nodes.filter((node) => node.selected || node.id === state.selectedNodeId).map((node) => node.id));
+const commitGraph = (state: GraphStore, graph: GraphState, before: GraphState = state) => {
+  if (graphSignature(before) === graphSignature(graph)) return state;
+  const history = pushHistory({ ...state, ...before });
+  const presented = presentGraph({ nodes: orderParentsFirst(graph.nodes), edges: clearEdgeRoutes(graph.edges) });
+  return {
+    ...presented,
+    ...history,
+    canUndo: true,
+    canRedo: false,
+    selectedNodeId: presented.nodes.find((node) => node.selected)?.id ?? null,
+    selectedEdgeId: presented.edges.find((edge) => edge.selected)?.id ?? null,
+  };
 };
-
-const applyDirectionalHandles = (nodes: ArchitectureNode[], edges: ArchitectureEdge[]) =>
-  edges.map((edge) => {
-    if (edge.data?.handleMode === 'manual' && edge.sourceHandle && edge.targetHandle) return edge;
-
-    const source = nodes.find((node) => node.id === edge.source);
-    const target = nodes.find((node) => node.id === edge.target);
-
-    return {
-      ...edge,
-      ...getEdgeHandles(source, target),
-    };
-  });
 
 const clearEdgeRoutes = (edges: ArchitectureEdge[]) =>
   edges.map((edge) => ({
@@ -114,25 +90,21 @@ const clearEdgeRoutes = (edges: ArchitectureEdge[]) =>
     data: { ...edge.data, routePoints: undefined },
   }));
 
-const isGroupNode = (node: ArchitectureNode) => node.type === 'groupNode' || node.data.isGroup === true || node.data.kind === 'group';
-
-const defaultGroupSize = {
-  height: 320,
-  width: 520,
+const getEdgeHandles = (source?: ArchitectureNode, target?: ArchitectureNode) => {
+  if (!source || !target) return {};
+  const nodes = useGraphStore.getState().nodes;
+  const a = absolutePosition(source, nodes),
+    b = absolutePosition(target, nodes);
+  const dx = b.x - a.x,
+    dy = b.y - a.y;
+  return Math.abs(dx) >= Math.abs(dy)
+    ? { sourceHandle: dx >= 0 ? 'right' : 'left', targetHandle: dx >= 0 ? 'left' : 'right' }
+    : { sourceHandle: dy >= 0 ? 'bottom' : 'top', targetHandle: dy >= 0 ? 'top' : 'bottom' };
 };
 
-const getNodeSize = (node: ArchitectureNode) => ({
-  height: Number(node.height ?? node.measured?.height ?? (node.style as CSSProperties | undefined)?.height ?? defaultGroupSize.height),
-  width: Number(node.width ?? node.measured?.width ?? (node.style as CSSProperties | undefined)?.width ?? defaultGroupSize.width),
-});
-
-const getAbsolutePosition = (node: ArchitectureNode, nodes: ArchitectureNode[]): { x: number; y: number } => {
-  if (!node.parentId) return node.position;
-  const parent = nodes.find((item) => item.id === node.parentId);
-  if (!parent) return node.position;
-  const parentPosition = getAbsolutePosition(parent, nodes);
-  return { x: parentPosition.x + node.position.x, y: parentPosition.y + node.position.y };
-};
+const isGroupNode = isGroup;
+const getNodeSize = nodeSize;
+const getAbsolutePosition = absolutePosition;
 
 const findContainingGroup = (node: ArchitectureNode, nodes: ArchitectureNode[]) => {
   if (isGroupNode(node)) return undefined;
@@ -196,87 +168,22 @@ const syncNodeGroup = (nodeId: string, nodes: ArchitectureNode[]) => {
   });
 };
 
-const orderNodesForGroups = (nodes: ArchitectureNode[]) => [...nodes.filter(isGroupNode), ...nodes.filter((node) => !isGroupNode(node))];
-
-const elk = new ELK();
-
-const toElkGraph = (nodes: ArchitectureNode[], edges: ArchitectureEdge[]): ElkNode => {
-  const depth = getGraphDepth(nodes, edges);
-
-  return {
-    id: 'root',
-    layoutOptions: {
-      'elk.algorithm': 'layered',
-      'elk.direction': 'RIGHT',
-      'elk.edgeRouting': 'ORTHOGONAL',
-      'elk.layered.spacing.nodeNodeBetweenLayers': '130',
-      'elk.spacing.nodeNode': '70',
-      'elk.spacing.edgeNode': '42',
-      'elk.spacing.edgeEdge': '24',
-      'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
-      'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
-    },
-    children: nodes.map((node) => ({
-      id: node.id,
-      width: 208,
-      height: 112,
-      layoutOptions: {
-        'elk.layered.layering.layerChoiceConstraint': String(Math.max(depth.get(node.id) ?? 0, getSemanticLayer(node))),
-      },
-    })),
-    edges: edges.map((edge) => ({
-      id: edge.id,
-      sources: [edge.source],
-      targets: [edge.target],
-    })),
-  };
-};
-
-const getRoutePoints = (elkEdge?: ElkExtendedEdge) => {
-  const section = elkEdge?.sections?.[0];
-  if (!section?.startPoint || !section.endPoint) return undefined;
-
-  return [section.startPoint, ...(section.bendPoints ?? []), section.endPoint].map((point) => ({ x: point.x, y: point.y }));
-};
-
-const getLayeredFallbackLayout = (nodes: ArchitectureNode[], edges: ArchitectureEdge[]) => {
-  const depth = getGraphDepth(nodes, edges);
-  const columns = new Map<number, ArchitectureNode[]>();
-
-  nodes.forEach((node) => {
-    const column = Math.max(depth.get(node.id) ?? 0, getSemanticLayer(node));
-    columns.set(column, [...(columns.get(column) ?? []), node]);
-  });
-
-  const sortedColumns = Array.from(columns.keys()).sort((first, second) => first - second);
-  const columnIndex = new Map(sortedColumns.map((column, index) => [column, index]));
-  const sortedColumnNodes = new Map(
-    Array.from(columns.entries()).map(([column, columnNodes]) => [
-      column,
-      [...columnNodes].sort((first, second) => {
-        const firstLayer = getSemanticLayer(first);
-        const secondLayer = getSemanticLayer(second);
-        if (firstLayer !== secondLayer) return firstLayer - secondLayer;
-        return first.data.label.localeCompare(second.data.label);
-      }),
-    ]),
-  );
-
-  return nodes.map((node) => {
-    const column = Math.max(depth.get(node.id) ?? 0, getSemanticLayer(node));
-    const columnNodes = sortedColumnNodes.get(column) ?? [];
-    const row = columnNodes.findIndex((item) => item.id === node.id);
-    const compactColumn = columnIndex.get(column) ?? column;
-
-    return {
-      ...node,
-      position: { x: 80 + compactColumn * 320, y: 90 + row * 180 },
-      selected: false,
-    };
-  });
-};
+const orderNodesForGroups = orderParentsFirst;
 
 interface GraphStore extends GraphState {
+  clipboard: GraphState | null;
+  selectAll: () => void;
+  copySelection: () => void;
+  pasteSelection: () => void;
+  duplicateSelection: () => void;
+  deleteSelection: () => void;
+  updateSelectedNodes: (data: Partial<ArchitectureNode['data']>) => void;
+  alignSelection: (alignment: Alignment) => void;
+  spaceSelection: (axis: 'horizontal' | 'vertical', gap: number) => void;
+  groupSelection: () => void;
+  setNodeParent: (nodeId: string, parentId?: string) => void;
+  resizeNode: (nodeId: string, width: number, height: number) => void;
+  beginResize: () => void;
   selectedNodeId: string | null;
   selectedEdgeId: string | null;
   past: GraphState[];
@@ -299,7 +206,7 @@ interface GraphStore extends GraphState {
   duplicateNode: (nodeId: string) => void;
   deleteNode: (nodeId: string) => void;
   deleteEdge: (edgeId: string) => void;
-  autoLayout: () => Promise<void>;
+  autoLayout: (options?: LayoutOptions) => Promise<'applied' | 'fallback' | 'stale' | undefined>;
   undo: () => void;
   redo: () => void;
   onNodesChange: (changes: NodeChange<ArchitectureNode>[]) => void;
@@ -308,6 +215,77 @@ interface GraphStore extends GraphState {
 }
 
 export const useGraphStore = create<GraphStore>((set, get) => ({
+  clipboard: null,
+  selectAll: () =>
+    set((state) => ({
+      nodes: state.nodes.map((node) => ({ ...node, selected: true })),
+      edges: state.edges.map((edge) => ({ ...edge, selected: true })),
+      selectedNodeId: state.nodes[0]?.id ?? null,
+      selectedEdgeId: null,
+    })),
+  copySelection: () => {
+    const state = get();
+    const graph = copySubgraph(state, selectionIds(state));
+    if (graph.nodes.length) {
+      pasteCount = 0;
+      set({ clipboard: graph });
+    }
+  },
+  pasteSelection: () =>
+    set((state) => (state.clipboard ? commitGraph(state, pasteSubgraph(state, state.clipboard, 48 * ++pasteCount)) : state)),
+  duplicateSelection: () =>
+    set((state) => {
+      const graph = copySubgraph(state, selectionIds(state));
+      return graph.nodes.length ? commitGraph(state, pasteSubgraph(state, graph)) : state;
+    }),
+  deleteSelection: () =>
+    set((state) =>
+      commitGraph(
+        state,
+        removeElements(
+          state,
+          selectionIds(state),
+          new Set(state.edges.filter((edge) => edge.selected || edge.id === state.selectedEdgeId).map((edge) => edge.id)),
+        ),
+      ),
+    ),
+  updateSelectedNodes: (data) =>
+    set((state) => {
+      const ids = selectionIds(state);
+      return commitGraph(state, {
+        ...state,
+        nodes: state.nodes.map((node) => (ids.has(node.id) ? { ...node, data: { ...node.data, ...data } } : node)),
+      });
+    }),
+  alignSelection: (alignment) =>
+    set((state) => commitGraph(state, { ...state, nodes: alignNodes(state.nodes, selectionIds(state), alignment) })),
+  spaceSelection: (axis, gap) =>
+    set((state) =>
+      Number.isFinite(gap) && gap >= 0 && gap <= 2000
+        ? commitGraph(state, { ...state, nodes: alignNodes(state.nodes, selectionIds(state), axis, gap) })
+        : state,
+    ),
+  groupSelection: () => set((state) => commitGraph(state, groupNodes(state, selectionIds(state)))),
+  setNodeParent: (nodeId, parentId) =>
+    set((state) => commitGraph(state, { ...state, nodes: reparentNodes(state.nodes, new Set([nodeId]), parentId) })),
+  resizeNode: (nodeId, width, height) =>
+    set((state) => {
+      const node = state.nodes.find((item) => item.id === nodeId);
+      if (!node || !Number.isFinite(width) || !Number.isFinite(height)) return state;
+      const limits = nodeLimits(node);
+      const size = {
+        width: Math.round(Math.max(limits.minWidth, Math.min(limits.maxWidth, width))),
+        height: Math.round(Math.max(limits.minHeight, Math.min(limits.maxHeight, height))),
+      };
+      return commitGraph(state, {
+        ...state,
+        nodes: state.nodes.map((item) => (item.id === nodeId ? { ...item, ...size, style: { ...item.style, ...size } } : item)),
+      });
+    }),
+  beginResize: () => {
+    if (!pendingMove) pendingMove = cloneGraph(get());
+    pendingResize = true;
+  },
   nodes: [],
   edges: [],
   selectedNodeId: null,
@@ -317,7 +295,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
   canUndo: false,
   canRedo: false,
   setGraph: (graph) => {
-    pendingMove = undefined;
+    resetTransform();
     const presentedGraph = presentGraph(graph);
 
     return set({
@@ -333,7 +311,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
   },
   replaceGraph: (graph) =>
     set((state) => {
-      pendingMove = undefined;
+      resetTransform();
       const pastState = pushHistory(state);
       const presentedGraph = presentGraph(graph);
 
@@ -407,7 +385,10 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
             ...edge.data,
             ...data,
             routePoints:
-              data?.handleMode === 'manual' || typeof data?.manualLabelOffsetX === 'number' || typeof data?.manualLabelOffsetY === 'number'
+              data?.handleMode === 'manual' ||
+              data?.pathStyle !== undefined ||
+              typeof data?.manualLabelOffsetX === 'number' ||
+              typeof data?.manualLabelOffsetY === 'number'
                 ? undefined
                 : edge.data?.routePoints,
           },
@@ -472,25 +453,8 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
     }),
   duplicateNode: (nodeId) =>
     set((state) => {
-      const node = state.nodes.find((item) => item.id === nodeId);
-      if (!node) return state;
-
-      const pastState = pushHistory(state);
-      const duplicate: ArchitectureNode = {
-        ...node,
-        id: `${node.data.kind}-${crypto.randomUUID().slice(0, 8)}`,
-        position: { x: node.position.x + 48, y: node.position.y + 48 },
-        selected: true,
-      };
-
-      return {
-        ...pastState,
-        nodes: orderNodesForGroups([...state.nodes.map((item) => ({ ...item, selected: false })), duplicate]),
-        selectedNodeId: duplicate.id,
-        selectedEdgeId: null,
-        canUndo: pastState.past.length > 0,
-        canRedo: false,
-      };
+      const graph = copySubgraph(state, new Set([nodeId]));
+      return graph.nodes.length ? commitGraph(state, pasteSubgraph(state, graph)) : state;
     }),
   deleteNode: (nodeId) =>
     set((state) => {
@@ -538,80 +502,20 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
         canRedo: false,
       };
     }),
-  autoLayout: async () => {
+  autoLayout: async (options) => {
     const state = get();
-    if (state.nodes.length === 0) return;
-
-    const pastState = pushHistory(state);
-    const layoutNodes = state.nodes.filter((node) => !isGroupNode(node) && !node.parentId);
-    const layoutNodeIds = new Set(layoutNodes.map((node) => node.id));
-    const layoutEdges = state.edges.filter((edge) => layoutNodeIds.has(edge.source) && layoutNodeIds.has(edge.target));
-
-    try {
-      const layout = await elk.layout(toElkGraph(layoutNodes, layoutEdges));
-      // A layout result belongs only to the graph that started the request.
-      if (get().nodes !== state.nodes || get().edges !== state.edges) return;
-      const nodes = state.nodes.map((node) => {
-        const elkNode = layout.children?.find((item) => item.id === node.id);
-        if (!elkNode) return { ...node, selected: false };
-
-        return {
-          ...node,
-          position: { x: 80 + (elkNode?.x ?? node.position.x), y: 80 + (elkNode?.y ?? node.position.y) },
-          selected: false,
-        };
-      });
-      const edgesWithHandles = applyDirectionalHandles(nodes, state.edges);
-      const edges = edgesWithHandles.map((edge) => {
-        const elkEdge = layout.edges?.find((item) => item.id === edge.id) as ElkExtendedEdge | undefined;
-        const routePoints = edge.data?.handleMode === 'manual' ? undefined : getRoutePoints(elkEdge);
-
-        return {
-          ...edge,
-          data: {
-            ...edge.data,
-            routePoints: routePoints?.map((point) => ({ x: 80 + point.x, y: 80 + point.y })),
-          },
-        };
-      });
-      const graph = presentGraph({ nodes, edges });
-
-      set({
-        ...pastState,
-        nodes: graph.nodes,
-        edges: graph.edges,
-        selectedNodeId: null,
-        selectedEdgeId: null,
-        canUndo: pastState.past.length > 0,
-        canRedo: false,
-      });
-    } catch {
-      const latestState = get();
-      if (latestState.nodes !== state.nodes || latestState.edges !== state.edges) return;
-      const latestLayoutNodes = latestState.nodes.filter((node) => !isGroupNode(node) && !node.parentId);
-      const latestLayoutNodeIds = new Set(latestLayoutNodes.map((node) => node.id));
-      const latestLayoutEdges = latestState.edges.filter(
-        (edge) => latestLayoutNodeIds.has(edge.source) && latestLayoutNodeIds.has(edge.target),
-      );
-      const layoutNodeMap = new Map(getLayeredFallbackLayout(latestLayoutNodes, latestLayoutEdges).map((node) => [node.id, node]));
-      const nodes = latestState.nodes.map((node) => layoutNodeMap.get(node.id) ?? { ...node, selected: false });
-      const edges = applyDirectionalHandles(nodes, clearEdgeRoutes(latestState.edges));
-      const graph = presentGraph({ nodes, edges });
-
-      set({
-        ...pastState,
-        nodes: graph.nodes,
-        edges: graph.edges,
-        selectedNodeId: null,
-        selectedEdgeId: null,
-        canUndo: pastState.past.length > 0,
-        canRedo: false,
-      });
-    }
+    if (!state.nodes.length) return;
+    const request = ++layoutRequest;
+    const signature = graphSignature(state);
+    const result = await layoutGraph(state, options);
+    if (request !== layoutRequest || get().past !== state.past || pendingMove || graphSignature(get()) !== signature) return 'stale';
+    resetTransform();
+    set(commitGraph(get(), result.graph));
+    return result.fallback ? 'fallback' : 'applied';
   },
   undo: () =>
     set((state) => {
-      pendingMove = undefined;
+      resetTransform();
       const previous = state.past.at(-1);
       if (!previous) return state;
 
@@ -630,7 +534,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
     }),
   redo: () =>
     set((state) => {
-      pendingMove = undefined;
+      resetTransform();
       const next = state.future[0];
       if (!next) return state;
 
@@ -649,42 +553,46 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
     }),
   onNodesChange: (changes) =>
     set((state) => {
-      const isMoving = changes.some((change) => change.type === 'position' && change.dragging === true);
-      const finishedMove = changes.some((change) => change.type === 'position' && change.dragging === false);
-      if (isMoving && !pendingMove) pendingMove = cloneGraph(state);
-      const hasGraphChange = changes.some(shouldRecordNodeChange);
-      const removedIds = new Set(changes.filter((change) => change.type === 'remove').map((change) => change.id));
-      const survivingNodes = state.nodes.map((node) => {
-        if (!node.parentId || !removedIds.has(node.parentId)) return node;
-        const { parentId: _parentId, extent: _extent, ...rest } = node;
-        return { ...rest, position: getAbsolutePosition(node, state.nodes) };
+      const starting = changes.some(
+        (change) => (change.type === 'position' && change.dragging === true) || (change.type === 'dimensions' && change.resizing === true),
+      );
+      if (starting && !pendingMove) {
+        resetTransform();
+        pendingMove = cloneGraph(state);
+      }
+      if (changes.some((change) => change.type === 'dimensions' && change.resizing === true)) pendingResize = true;
+      changes.forEach((change) => {
+        if (change.type === 'position' && change.position) movedNodeIds.add(change.id);
       });
-      const nodes = orderNodesForGroups(applyNodeChanges(changes, survivingNodes));
-      const selectedNodeId = changes.some((change) => change.type === 'remove' && change.id === state.selectedNodeId)
-        ? null
-        : state.selectedNodeId;
-      const selectedEdgeId = changes.some(
+      const finished = changes.some(
         (change) =>
-          change.type === 'remove' &&
-          state.edges.some((edge) => edge.id === state.selectedEdgeId && (edge.source === change.id || edge.target === change.id)),
-      )
-        ? null
-        : state.selectedEdgeId;
-      const pastState = hasGraphChange
-        ? pushHistory(finishedMove && pendingMove ? { ...state, ...pendingMove } : state)
-        : { past: state.past, future: state.future };
-      if (finishedMove || removedIds.size) pendingMove = undefined;
-      const edges = state.edges.filter((edge) => !removedIds.has(edge.source) && !removedIds.has(edge.target));
-
-      return {
-        ...pastState,
-        nodes,
-        edges: hasGraphChange ? presentGraph({ nodes, edges: clearEdgeRoutes(edges) }).edges : state.edges,
-        selectedNodeId,
-        selectedEdgeId,
-        canUndo: pastState.past.length > 0,
-        canRedo: pastState.future.length > 0,
-      };
+          (change.type === 'position' && change.dragging === false) || (change.type === 'dimensions' && change.resizing === false),
+      );
+      const removedIds = new Set(changes.filter((change) => change.type === 'remove').map((change) => change.id));
+      const surviving = removeElements(state, removedIds);
+      let nodes = orderNodesForGroups(applyNodeChanges(changes, surviving.nodes));
+      // Persist explicit resize dimensions; measured-only changes never create history.
+      nodes = nodes.map((node) => {
+        const sizeChange = changes.find(
+          (change) => change.type === 'dimensions' && change.id === node.id && change.dimensions && change.setAttributes,
+        );
+        return sizeChange?.type === 'dimensions' ? { ...node, style: { ...node.style, ...sizeChange.dimensions } } : node;
+      });
+      if (finished && !pendingResize) {
+        const roots = new Set(selectedMoveRoots(nodes));
+        for (const id of movedNodeIds) {
+          if (roots.has(id)) nodes = syncNodeGroup(id, nodes);
+        }
+      }
+      const graph = { nodes, edges: surviving.edges };
+      if (pendingMove && !finished && !removedIds.size) return { ...graph, edges: clearEdgeRoutes(graph.edges) };
+      if (changes.some(shouldRecordNodeChange) || (finished && pendingMove)) {
+        const before = pendingMove ?? state;
+        const result = commitGraph(state, graph, before);
+        resetTransform();
+        return result;
+      }
+      return { nodes, selectedNodeId: nodes.some((node) => node.id === state.selectedNodeId) ? state.selectedNodeId : null };
     }),
   onEdgesChange: (changes) =>
     set((state) => {

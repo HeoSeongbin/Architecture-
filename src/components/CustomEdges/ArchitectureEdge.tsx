@@ -1,4 +1,4 @@
-import { BaseEdge, EdgeLabelRenderer, Position, getSmoothStepPath, type EdgeProps } from '@xyflow/react';
+import { BaseEdge, EdgeLabelRenderer, Position, getSmoothStepPath, getStraightPath, type EdgeProps } from '@xyflow/react';
 import type { ArchitectureEdge as ArchitectureEdgeType } from '../../types/graph';
 
 const splitLabel = (label: string) => {
@@ -75,18 +75,19 @@ export function ArchitectureEdge({
 }: EdgeProps<ArchitectureEdgeType>) {
   const adjustedSource = applyTerminalOffset(sourceX, sourceY, sourcePosition, data?.sourceTerminalOffset);
   const adjustedTarget = applyTerminalOffset(targetX, targetY, targetPosition, data?.targetTerminalOffset);
-  const [edgePath, labelX, labelY] = getSmoothStepPath({
+  const pathParams = {
     sourceX: adjustedSource.x,
     sourceY: adjustedSource.y,
     sourcePosition,
     targetX: adjustedTarget.x,
     targetY: adjustedTarget.y,
     targetPosition,
-    borderRadius: 14,
+    borderRadius: data?.pathStyle === 'step' ? 0 : 14,
     offset: pathOptions?.offset,
-  });
+  };
+  const [edgePath, labelX, labelY] = data?.pathStyle === 'straight' ? getStraightPath(pathParams) : getSmoothStepPath(pathParams);
   const routePoints = getOffsetRoutePoints(
-    data?.routePoints ?? [],
+    !data?.pathStyle || data.pathStyle === 'smoothstep' ? (data?.routePoints ?? []) : [],
     sourcePosition,
     targetPosition,
     data?.sourceTerminalOffset,

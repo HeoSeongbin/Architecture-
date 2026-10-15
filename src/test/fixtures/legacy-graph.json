@@ -1,0 +1,42 @@
+{
+  "nodes": [
+    {
+      "id": "client",
+      "type": "architectureNode",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "data": {
+        "kind": "react",
+        "label": "기존 client",
+        "subtitle": "",
+        "category": "Application",
+        "accent": "#38bdf8"
+      }
+    },
+    {
+      "id": "server",
+      "type": "architectureNode",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "data": {
+        "kind": "spring",
+        "label": "기존 server",
+        "subtitle": "",
+        "category": "Application",
+        "accent": "#38bdf8"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "old-edge",
+      "source": "client",
+      "target": "server",
+      "label": "HTTPS"
+    }
+  ]
+}

@@ -7,6 +7,7 @@ import {
   Controls,
   MiniMap,
   ReactFlow,
+  SelectionMode,
   useReactFlow,
   type EdgeTypes,
   type NodeTypes,
@@ -71,7 +72,6 @@ export function ArchitectureCanvas({ showGrid, theme }: ArchitectureCanvasProps)
   const edges = useGraphStore((state) => state.edges);
   const selectedNodeId = useGraphStore((state) => state.selectedNodeId);
   const addNode = useGraphStore((state) => state.addNode);
-  const assignNodeToGroup = useGraphStore((state) => state.assignNodeToGroup);
   const onNodesChange = useGraphStore((state) => state.onNodesChange);
   const onEdgesChange = useGraphStore((state) => state.onEdgesChange);
   const onConnect = useGraphStore((state) => state.onConnect);
@@ -140,9 +140,15 @@ export function ArchitectureCanvas({ showGrid, theme }: ArchitectureCanvasProps)
           'minimap.ariaLabel': '다이어그램 미니맵',
         }}
         connectionMode={ConnectionMode.Loose}
-        deleteKeyCode={['Backspace', 'Delete']}
+        deleteKeyCode={null}
+        multiSelectionKeyCode={['Shift', 'Control', 'Meta']}
+        selectionKeyCode="Shift"
+        selectionOnDrag
+        selectionMode={SelectionMode.Full}
+        panOnDrag={[1, 2]}
         edgeTypes={edgeTypes}
         edges={visibleEdges}
+        elevateNodesOnSelect={false}
         fitView
         minZoom={0.1}
         fitViewOptions={{ padding: 0.25 }}
@@ -152,7 +158,6 @@ export function ArchitectureCanvas({ showGrid, theme }: ArchitectureCanvasProps)
         onDragOver={onDragOver}
         onDrop={onDrop}
         onEdgesChange={onEdgesChange}
-        onNodeDragStop={(_, node) => assignNodeToGroup(node.id)}
         onNodesChange={onNodesChange}
         onSelectionChange={({ nodes: selectedNodes, edges: selectedEdges }) => {
           const selectedNodeId = selectedNodes[0]?.id ?? null;

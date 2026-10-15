@@ -124,7 +124,7 @@ export function Sidebar({ onAdded }: { onAdded?: () => void }) {
           );
         })}
       </div>
-      <div className="panel-hint">Shift로 여러 노드 선택 · Delete로 삭제</div>
+      <div className="panel-hint">Ctrl/Shift+클릭 또는 드래그 영역 선택 · Delete로 삭제</div>
     </aside>
   );
 }

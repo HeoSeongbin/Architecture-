@@ -4,6 +4,7 @@ import type { ArchitectureEdge, ArchitectureEdgeData, ArchitectureNode, GraphSta
 const DEFAULT_EDGE_COLOR = '#475569';
 
 export const edgeDefaults = {
+  zIndex: 1,
   animated: true,
   type: 'architectureEdge' as const,
   labelBgPadding: [8, 4] as [number, number],
@@ -13,8 +14,8 @@ export const edgeDefaults = {
   style: { stroke: DEFAULT_EDGE_COLOR, strokeWidth: 2 },
 };
 
-const getArrowMarker = (color: string) => ({
-  type: MarkerType.ArrowClosed,
+const getArrowMarker = (color: string, open = false) => ({
+  type: open ? MarkerType.Arrow : MarkerType.ArrowClosed,
   width: 12,
   height: 12,
   color,
@@ -30,7 +31,7 @@ const getNodeFullLabel = (node?: ArchitectureNode) => {
 };
 
 const getSourceColor = (edge: ArchitectureEdge, nodes: ArchitectureNode[]) =>
-  nodes.find((node) => node.id === edge.source)?.data.accent ?? DEFAULT_EDGE_COLOR;
+  edge.data?.color ?? nodes.find((node) => node.id === edge.source)?.data.accent ?? DEFAULT_EDGE_COLOR;
 
 const getDisplayedLabel = (edge: ArchitectureEdge, nodes: ArchitectureNode[]) => {
   const label = edge.data?.label?.trim() ?? '';
@@ -59,12 +60,16 @@ type EdgePresentation = Partial<ArchitectureEdge> & {
 
 export const getEdgeVisuals = (data?: ArchitectureEdgeData, color = DEFAULT_EDGE_COLOR, routeOffset?: number): EdgePresentation => {
   const direction = getEdgeDirection(data);
-  const arrowMarker = getArrowMarker(color);
+  const arrowMarker = data?.arrowStyle === 'none' ? undefined : getArrowMarker(color, data?.arrowStyle === 'open');
 
   return {
     ...edgeDefaults,
     pathOptions: routeOffset ? { offset: routeOffset } : undefined,
-    style: { stroke: color, strokeWidth: 2 },
+    style: {
+      stroke: color,
+      strokeWidth: 2,
+      strokeDasharray: data?.lineStyle === 'dashed' ? '8 5' : data?.lineStyle === 'dotted' ? '2 5' : undefined,
+    },
     markerStart: direction === 'reverse' || direction === 'bidirectional' ? arrowMarker : undefined,
     markerEnd: direction === 'forward' || direction === 'bidirectional' ? arrowMarker : undefined,
   };
@@ -196,6 +201,9 @@ export const applyEdgePresentation = (nodes: ArchitectureNode[], edges: Architec
 };
 
 export const presentGraph = (graph: GraphState): GraphState => ({
-  nodes: graph.nodes,
+  nodes: graph.nodes.map((node) => ({
+    ...node,
+    zIndex: node.type === 'groupNode' || node.data.isGroup || node.data.kind === 'group' ? 0 : 2,
+  })),
   edges: applyEdgePresentation(graph.nodes, graph.edges),
 });

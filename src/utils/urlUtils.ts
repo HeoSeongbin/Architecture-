@@ -1,5 +1,7 @@
+import { parseImportedGraph } from './jsonUtils';
+import { DATA_VERSION, GRAPH_LIMITS, checkVersion, record, fail, GraphDataError } from './graphValidation';
 import base64 from 'base-64';
-import { deflate, inflate } from 'pako';
+import { deflate, Inflate } from 'pako';
 import type {
   ArchitectureEdge,
   ArchitectureEdgeData,
@@ -94,6 +96,7 @@ const toUrlSafe = (value: string) => value.replaceAll('+', '-').replaceAll('/', 
 const fromUrlSafe = (value: string) => value.replaceAll('-', '+').replaceAll('_', '/').replaceAll('~', '=');
 
 const minifyGraph = (state: GraphState): MinifiedGraph => ({
+  v: DATA_VERSION,
   n: state.nodes.map<MinifiedNode>((node) => ({
     i: node.id,
     t: node.type ?? 'architectureNode',
@@ -108,6 +111,10 @@ const minifyGraph = (state: GraphState): MinifiedGraph => ({
     i: edge.id,
     s: edge.source,
     t: edge.target,
+    ...(edge.data?.color ? { c: edge.data.color } : {}),
+    ...(edge.data?.lineStyle && edge.data.lineStyle !== 'solid' ? { k: edge.data.lineStyle } : {}),
+    ...(edge.data?.pathStyle && edge.data.pathStyle !== 'smoothstep' ? { q: edge.data.pathStyle } : {}),
+    ...(edge.data?.arrowStyle && edge.data.arrowStyle !== 'closed' ? { u: edge.data.arrowStyle } : {}),
     ...(edge.data?.label ? { l: edge.data.label } : {}),
     ...(minifyDirection(edge.data?.direction) ? { d: minifyDirection(edge.data?.direction) } : {}),
     ...(minifyLabelMode(edge.data?.labelMode, edge.data?.showEndpoints)
@@ -131,11 +138,17 @@ const expandGraph = (graph: MinifiedGraph): GraphState => {
     data: node.d,
     ...(node.g ? { parentId: node.g } : {}),
     ...(node.e === 1 ? { extent: 'parent' as const } : {}),
-    ...(node.w || node.h ? { style: { width: node.w ?? 520, height: node.h ?? 320 } } : {}),
+    ...(node.w || node.h
+      ? { style: { width: node.w ?? (node.t === 'groupNode' ? 520 : 208), height: node.h ?? (node.t === 'groupNode' ? 320 : 112) } }
+      : {}),
   }));
 
   const edges = graph.e.map<ArchitectureEdge>((edge) => {
     const data: ArchitectureEdgeData = {
+      ...(edge.c ? { color: edge.c } : {}),
+      ...(edge.k ? { lineStyle: edge.k } : {}),
+      ...(edge.q ? { pathStyle: edge.q } : {}),
+      ...(edge.u ? { arrowStyle: edge.u } : {}),
       direction: expandDirection(edge.d),
       label: edge.l,
       labelMode: expandLabelMode(edge.m, edge.x === 1),
@@ -163,8 +176,12 @@ const expandGraph = (graph: MinifiedGraph): GraphState => {
 export const encodeStateToUrl = (state: GraphState) => {
   if (state.nodes.length === 0 && state.edges.length === 0) return '';
 
+  if (state.nodes.length > GRAPH_LIMITS.nodes || state.edges.length > GRAPH_LIMITS.edges)
+    throw new GraphDataError('size', '노드/연결 개수 제한을 초과했습니다. JSON으로 백업하세요.');
   const json = JSON.stringify(minifyGraph(state));
-  const compressed = deflate(textEncoder.encode(json));
+  const bytes = textEncoder.encode(json);
+  if (bytes.length > GRAPH_LIMITS.bytes) throw new GraphDataError('size', '저장 데이터가 5 MiB를 초과했습니다. JSON으로 백업하세요.');
+  const compressed = deflate(bytes);
   return toUrlSafe(base64.encode(bytesToBinary(compressed)));
 };
 
@@ -173,11 +190,66 @@ export const decodeStateFromUrl = (hash: string): { ok: true; state: GraphState 
   if (!value) return { ok: true, state: { nodes: [], edges: [] } };
 
   try {
-    const binary = base64.decode(fromUrlSafe(value));
-    const inflated = inflate(binaryToBytes(binary));
-    const graph = JSON.parse(textDecoder.decode(inflated)) as MinifiedGraph;
-    return { ok: true, state: expandGraph(graph) };
+    if (value.length > GRAPH_LIMITS.hash) throw new GraphDataError('size', '압축 URL이 1 MiB를 초과했습니다. JSON 파일을 사용하세요.');
+    if (!/^[A-Za-z0-9_-]+~{0,2}$/.test(value)) fail('URL', 'Base64 형식이 잘못되었습니다.');
+    const inflater = new Inflate({ chunkSize: 16384 });
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    inflater.onData = (chunk: Uint8Array) => {
+      size += chunk.length;
+      if (size > GRAPH_LIMITS.bytes) throw new GraphDataError('size', '압축 해제 데이터가 5 MiB를 초과했습니다.');
+      chunks.push(chunk);
+    };
+    inflater.push(binaryToBytes(base64.decode(fromUrlSafe(value))), true);
+    if (inflater.err || !('ended' in inflater && inflater.ended)) fail('URL', '압축 데이터가 손상되었거나 잘렸습니다.');
+    const inflated = new Uint8Array(size);
+    let offset = 0;
+    for (const chunk of chunks) {
+      inflated.set(chunk, offset);
+      offset += chunk.length;
+    }
+    const graph: unknown = JSON.parse(textDecoder.decode(inflated));
+    validateCompact(graph);
+    return { ok: true, state: parseImportedGraph(expandGraph(graph)) };
   } catch (error) {
     return { ok: false, state: { nodes: [], edges: [] }, error };
   }
 };
+
+function validateCompact(value: unknown): asserts value is MinifiedGraph {
+  if (!record(value)) fail('URL', '문서 객체가 필요합니다.');
+  const graph = value as Record<string, unknown>;
+  checkVersion(graph.v);
+  if (!Array.isArray(graph.n) || !Array.isArray(graph.e)) fail('URL', 'n/e 배열이 필요합니다.');
+  const nodes = graph.n as unknown[],
+    edges = graph.e as unknown[];
+  if (nodes.length > GRAPH_LIMITS.nodes || edges.length > GRAPH_LIMITS.edges)
+    throw new GraphDataError('size', '노드/연결 개수 제한을 초과했습니다.');
+  nodes.forEach((node, index) => {
+    if (!record(node) || !Array.isArray(node.p) || node.p.length !== 2) fail(`n[${index}]`, '좌표 배열이 필요합니다.');
+    const raw = node as Record<string, unknown>;
+    if (raw.t !== undefined && !['architectureNode', 'groupNode'].includes(String(raw.t))) fail(`n[${index}].t`, '잘못된 노드 종류입니다.');
+    if (raw.e !== undefined && raw.e !== 1) fail(`n[${index}].e`, '잘못된 extent입니다.');
+    for (const field of ['w', 'h'])
+      if (raw[field] !== undefined && (typeof raw[field] !== 'number' || !Number.isFinite(raw[field]) || Number(raw[field]) <= 0))
+        fail(`n[${index}].${field}`, '양수 크기가 필요합니다.');
+  });
+  const enums: Record<string, unknown[]> = {
+    d: ['r', 'b'],
+    m: ['h', 'c', 'f'],
+    r: ['h', 'v', 'w'],
+    h: [1],
+    x: [1],
+    a: ['t', 'r', 'b', 'l'],
+    z: ['t', 'r', 'b', 'l'],
+  };
+  edges.forEach((edge, index) => {
+    if (!record(edge)) fail(`e[${index}]`, '연결 객체가 필요합니다.');
+    const raw = edge as Record<string, unknown>;
+    for (const field of ['i', 's', 't', 'l', 'c', 'k', 'q', 'u'])
+      if (raw[field] !== undefined && (typeof raw[field] !== 'string' || !raw[field]))
+        fail(`e[${index}].${field}`, '빈 문자열이 아닌 문자열이 필요합니다.');
+    for (const [key, options] of Object.entries(enums))
+      if (raw[key] !== undefined && !options.includes(raw[key])) fail(`e[${index}].${key}`, '지원하지 않는 값입니다.');
+  });
+}

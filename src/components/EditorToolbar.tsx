@@ -1,3 +1,5 @@
+import { LayoutSettings } from './LayoutSettings';
+import type { LayoutOptions } from '../utils/layoutGraph';
 import { useReactFlow } from '@xyflow/react';
 import {
   Copy,
@@ -22,8 +24,11 @@ import {
 import type { ArchitectureEdgeData } from '../types/graph';
 import type { EditorTheme } from '../hooks/useEditorTheme';
 import { useEffect } from 'react';
+import { useGraphStore } from '../store/useGraphStore';
 type LabelMode = NonNullable<ArchitectureEdgeData['labelMode']>;
 interface Props {
+  layoutOptions: LayoutOptions;
+  setLayoutOptions: (value: LayoutOptions) => void;
   canUndo: boolean;
   canRedo: boolean;
   undo: () => void;
@@ -48,6 +53,14 @@ interface Props {
 }
 export function EditorToolbar(p: Props) {
   const flow = useReactFlow();
+  const hasNodes = useGraphStore((state) => Boolean(state.selectedNodeId) || state.nodes.some((node) => node.selected));
+  const hasSelection = useGraphStore(
+    (state) =>
+      Boolean(state.selectedNodeId || state.selectedEdgeId) ||
+      state.nodes.some((node) => node.selected) ||
+      state.edges.some((edge) => edge.selected),
+  );
+  const canPaste = useGraphStore((state) => Boolean(state.clipboard?.nodes.length));
   useEffect(() => {
     const closeOutside = (event: PointerEvent) => {
       document.querySelectorAll<HTMLDetailsElement>('.tool-menu[open]').forEach((menu) => {
@@ -80,6 +93,7 @@ export function EditorToolbar(p: Props) {
           }
         }}
       >
+        <LayoutSettings value={p.layoutOptions} change={p.setLayoutOptions} apply={p.layout} busy={p.busy} />
         {p.narrow && (
           <button
             className="icon-button"
@@ -120,6 +134,29 @@ export function EditorToolbar(p: Props) {
             <button className="menu-danger" onClick={p.clear}>
               <Trash2 size={16} />
               캔버스 비우기
+            </button>
+          </div>
+        </details>
+        <details className="tool-menu" name="editor-tools">
+          <summary>편집</summary>
+          <div className="tool-menu-content">
+            <button onClick={() => useGraphStore.getState().selectAll()}>
+              전체 선택 <kbd>Ctrl/⌘ A</kbd>
+            </button>
+            <button disabled={!hasNodes} onClick={() => useGraphStore.getState().copySelection()}>
+              선택 복사 <kbd>Ctrl/⌘ C</kbd>
+            </button>
+            <button disabled={!canPaste} onClick={() => useGraphStore.getState().pasteSelection()}>
+              붙여넣기 <kbd>Ctrl/⌘ V</kbd>
+            </button>
+            <button disabled={!hasNodes} onClick={() => useGraphStore.getState().duplicateSelection()}>
+              선택 복제 <kbd>Ctrl/⌘ D</kbd>
+            </button>
+            <button disabled={!hasNodes} onClick={() => useGraphStore.getState().groupSelection()}>
+              선택을 그룹으로
+            </button>
+            <button disabled={!hasSelection} onClick={() => useGraphStore.getState().deleteSelection()}>
+              선택 삭제 <kbd>Delete</kbd>
             </button>
           </div>
         </details>

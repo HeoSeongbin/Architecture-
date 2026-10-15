@@ -69,3 +69,54 @@
 - 이유/영향: 기존 드래그와 선택 이벤트를 보존하고 키보드 사용 경로를 제공한다. 클릭 추가 후 모바일 패널을 닫는다. Fit View를 위해 minZoom을 0.1로 낮추며 사용자 viewport를 화면 크기 변경만으로 자동 리셋하지 않는다.
 - 호환성: 추가 노드의 ID/kind/category와 그룹 크기/parentId 형식은 기존 계약을 따른다. addNode는 기존 선택을 해제하고 새 노드를 selected로 표시하도록 보완했다. 이는 Inspector 선택 ID와 React Flow 선택 상태의 불일치 수정이며 Undo 한 단계 정책을 유지한다.
 - 관련: src/components/EditorToolbar.tsx, Sidebar.tsx, ArchitectureCanvas.tsx, src/store/useGraphStore.ts.
+
+## ADR-008 — 선택과 내부 클립보드, 편집 트랜잭션
+
+- 날짜: 2026-10-15
+- 문제: 단일 선택 ID만으로는 다중 복제/삭제를 원자적으로 처리할 수 없고, 그룹 드래그와 크기 변경은 여러 이벤트로 쪼개진다.
+- 대안: 새 상태 관리 라이브러리/OS 클립보드 직렬화, 기존 Zustand와 React Flow 선택 및 지역 클립보드 활용.
+- 결정: nodes/edges의 selected를 다중 선택의 기준으로 사용하고 단일 ID는 Inspector 호환용으로 유지한다. copySubgraph/pasteSubgraph/정렬/부모 변환을 graphEditing 순수 함수로 분리한다. 클립보드는 Store의 메모리 상태이며 같은 페이지 내 편집/새 문서에 사용할 수 있다. OS clipboard와 공유 데이터에는 쓰지 않는다.
+- 이유/영향: 권한 없이 복사/붙여넣기 가능하며 내부 엣지와 그룹의 암묵적 자식을 함께 복제한다. UUID/parentId/edge endpoint를 재매핑하고, 원본 그룹 없이 복사한 자식은 절대 좌표로 분리한다. 붙여넣기 선택은 복제한 루트만 활성화해 부모/자식 중복 이동을 피한다.
+- 히스토리: 첫 이동/resize 전 snapshot 하나를 잡고 마지막 이벤트에서 commit한다. 드래그에 따른 그룹 전환도 같은 commit에 포함한다. 일괄 삭제/속성/정렬/간격/그룹 생성은 한 단계이며 측정·선택·무변경 작업은 기록하지 않는다. 기존 80단계 정책을 유지한다.
+- 호환성: 클립보드/선택은 URL/JSON 스키마를 변경하지 않는다. 기존 단일 노드 복제도 동일한 서브그래프 로직을 재사용한다.
+- 관련: src/store/useGraphStore.ts, src/utils/graphEditing.ts, src/store/phase3.test.ts, src/App.test.tsx.
+
+## ADR-009 — 크기 및 연결선 스타일의 선택 필드 확장
+
+- 날짜: 2026-10-15
+- 문제: 새 크기와 엣지 UI를 저장하고 구버전 다이어그램도 읽어야 한다.
+- 대안: 새 포맷 전환 또는 기존 선택 필드 확장.
+- 결정: 기존 노드 w/h와 JSON style.width/height를 재사용한다. 엣지 data에 lineStyle/pathStyle/color/arrowStyle을 추가하고 URL에서는 k/q/c/u 선택 키로 저장한다. 기존 방향/핸들/라벨 필드는 유지한다.
+- 이유/영향: 기본 실선/SmoothStep/노드 색상/채운 화살표는 생략 가능하다. 신규 선택 필드가 없는 이전 URL/JSON은 기존 모습으로 복원한다. 새 JSON 필드의 enum/hex와 유한 양수 치수를 검증한다. 기존 앱은 새 필드를 무시할 수 있으나 새 스타일 보존은 보장하지 않는다.
+- 크기 정책: 일반 160×112–800×600, 그룹 280×180–8000×8000. 기존 파일의 양수 치수는 상한 때문에 거부하지 않으며 사용자가 다시 resize할 때 한도를 적용한다. 새 그룹은 제목 여백 88px을 확보한다.
+- 렌더링: 그룹 0/일반 노드 2, 엣지 기본 1로 파생 zIndex를 지정하고 선택한 부모의 자동 승격을 끈다. React Flow가 내부 엣지를 추가 승격할 수 있다. 저장 데이터에 이 레이어 정책을 넣지 않는다.
+- 연관 수정: 기존 ELK 및 fallback은 새 노드의 실제 크기를 입력받도록 조정한다. 엔진/방향/그룹 정렬 개선은 Phase 4에 유지한다.
+- 호환성: 이전 기본값/한글/300노드/그룹·수동 엣지 회귀와 새 스타일·크기·부모 관계의 두 형식 왕복 테스트를 통과한다. 포맷 버전과 압축 상한은 Phase 4에서 별도로 설계한다.
+- 관련: src/types/graph.ts, src/utils/urlUtils.ts, jsonUtils.ts, edgeUtils.ts, CustomEdges/ArchitectureEdge.tsx, NodeGeometryEditor.tsx.
+
+## ADR-010 — 버전과 입력 상한, legacy 마이그레이션
+
+- 날짜: 2026-10-15
+- 결정: URL은 v:1을 n/e에 추가, 파일 내보내기는 version:1을 nodes/edges에 추가한다. 버전 생략은 legacy이며 기존 기본값과 edge.label을 정규화한다. 미지원 버전은 명시적 오류로 거부한다. Store/히스토리용 toExportableGraph는 그래프만 반환하고 파일 경계에서 버전을 붙인다.
+- 검증: 두 입력 경로가 parseImportedGraph/graphValidation을 공유하고 URL 축약 enum도 확장 전에 검사한다. 필드 경로 또는 참조/부모 오류를 사용자에게 표시한다. 부모는 렌더 전에 우선 정렬한다. 잘못된 일부 항목을 버리는 부분 Import는 허용하지 않는다.
+- 제한: 노드 1,000 / 연결 5,000 / 문자열 10,000자 / 부모 깊이 32. JSON 파일 및 UTF-8 해제 결과 5 MiB, 압축 URL 문자 1 MiB. pako Inflate onData에서 16 KiB마다 누적 검사하여 전체 결과를 먼저 할당하지 않는다. 실제 안전 성능 목표가 아닌 입력 자원 상한이며 Phase 6 벤치마크로 조정한다.
+- 호환성: 압축·Base64 치환·n/e·선택 필드는 그대로다. 버전 없는 유효한 기존 링크/파일은 복원한다. 잘못된 enum/색/참조나 상한 초과는 이전 앱이 관대하게 읽었더라도 거부한다. 양수 legacy 크기에 UI resize 상한을 소급하지 않는다. 고정 JSON/hash fixture를 보존한다.
+
+## ADR-011 — 계층별 ELK 유지와 그룹 배치
+
+- 날짜: 2026-10-15
+- 대안: Dagre 신규 도입, 자체 전체 배치, ELK compound graph, 기존 ELK layered를 계층별 적용.
+- 결정: ELK 유지, 그룹 내부부터 배치하고 실제 자식 bounding box에 제목 88px/측면·하단 32px 여백을 적용한다. 각 계층에서 하위 노드 사이 연결을 해당 형제 그룹으로 투영하여 외부 연결도 순서 결정에 반영한다. LR/TB/RL/BT, 계층/노드 간격 20–500px, 기본 LR/130/70을 제공한다.
+- 이유: 새 의존성 없이 순환·비연결 그래프와 실제 치수를 처리하며 React Flow parentId/상대 좌표를 보존한다. Dagre로 변경할 근거가 없고 자체 배치는 교차 최소화 기능을 잃는다. compound 경로와 UI 수동 핸들 좌표의 결합 대신 계층별 배치를 선택한다.
+- 실패 정책: 해당 계층 ELK 실패 시 같은 방향·실제 크기의 일렬 배치로 겹침을 방지하고 사용자에게 fallback을 알린다. 좌표 오버플로는 적용하지 않는다. fallback은 의미 계층보다 안전한 비중첩 배치를 우선한다.
+- 연결선: 기존 생성 routePoints는 제거하고 절대 중심 좌표로 자동 핸들을 지정한다. 수동 면/스타일은 보존한다. 렌더러의 경로가 모든 노드를 우회하거나 교차를 없애는 것은 보장하지 않는다.
+- 경쟁/히스토리: 요청 번호, 영속 그래프 signature, past 참조 및 진행 중 변환으로 오래된 결과를 폐기한다. 선택/측정만 바뀌면 허용한다. 배치+그룹 치수 변경은 한 번 commit하여 Undo/Redo한다.
+
+## ADR-012 — URL 동기화 및 작업 교체 보호
+
+- 날짜: 2026-10-15
+- 결정: useGraphPersistence로 초기 복원/구독/오류를 분리한다. StrictMode에서도 초기 복원은 한 번, 영속 필드 signature가 바뀐 경우에만 편집 완료 후 400ms 압축한다. 선택/측정/드래그 중간에는 압축하지 않으며 Import/교체 적용은 즉시 기록한다. replaceState를 유지한다.
+- 용량: 전체 URL 8,000자부터 경고, 64,000자 초과는 마지막 주소와 현재 그래프를 보존하고 자동 기록/링크 복사를 중단한다. JSON 백업을 안내한다. 미기록 변경이 있으면 beforeunload 경고를 요청한다. 이는 서버 백업이나 브라우저별 주소 길이 보장이 아니다.
+- 외부 hashchange: 검증 후 현재 주소를 복구하고 현재 문서가 있으면 교체 확인창을 연다. 취소/오류는 작업을 유지한다. 승인 시 replaceGraph로 교체하여 Undo 가능하게 한다. 탐색 때문에 취소한 debounce가 미저장 상태로 남지 않도록 최신 작업도 flush한다.
+- 샘플/새 문서/Import: 현재 그래프가 있으면 native modal dialog로 확인하고 키보드 편집을 막는다. 파일 상한을 읽기 전에 검사하고 요청 번호 및 읽기 전후 signature로 오래된 읽기를 폐기한다. 파일 검증 실패 시 교체하지 않는다.
+- 제한: 새 URL로 전체 페이지 이동/브라우저 종료의 복구는 주소와 JSON 백업에 의존한다. 개발 HMR Store 초기화 상태 보존은 별도 개선 후보다. localStorage에 다이어그램을 추가 저장하지 않는다.

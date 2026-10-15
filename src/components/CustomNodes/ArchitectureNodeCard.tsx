@@ -1,7 +1,8 @@
-import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { Handle, NodeResizer, Position, type NodeProps } from '@xyflow/react';
 import { Server } from 'lucide-react';
 import { assetIcons, categoryLabels } from '../../utils/assetPresentation';
 import type { ArchitectureNode } from '../../types/graph';
+import { useGraphStore } from '../../store/useGraphStore';
 
 const connectionHandles = [Position.Top, Position.Right, Position.Bottom, Position.Left];
 
@@ -11,8 +12,17 @@ export function ArchitectureNodeCard({ data, selected }: NodeProps<ArchitectureN
   return (
     <div
       className={`architecture-node ${selected ? 'architecture-node-selected' : ''}`}
-      style={{ '--node-accent': data.accent } as React.CSSProperties}
+      style={{ '--node-accent': data.accent, width: '100%', height: '100%', minWidth: 160, minHeight: 112 } as React.CSSProperties}
     >
+      <NodeResizer
+        isVisible={selected}
+        color={data.accent}
+        minWidth={160}
+        minHeight={112}
+        maxWidth={800}
+        maxHeight={600}
+        onResizeStart={() => useGraphStore.getState().beginResize()}
+      />
       {connectionHandles.map((position) => (
         <Handle className="node-handle" id={position} key={position} position={position} type="source" />
       ))}

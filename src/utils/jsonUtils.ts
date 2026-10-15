@@ -1,3 +1,5 @@
+import { orderParentsFirst } from './graphEditing';
+import { validateGraphInput, GraphDataError, GRAPH_LIMITS } from './graphValidation';
 import type { ArchitectureEdge, ArchitectureNode, GraphState } from '../types/graph';
 import { presentGraph } from './edgeUtils';
 
@@ -23,6 +25,11 @@ const normalizeNode = (value: unknown): ArchitectureNode | null => {
 
   const width = isRecord(value.style) && typeof value.style.width === 'number' ? value.style.width : undefined;
   const height = isRecord(value.style) && typeof value.style.height === 'number' ? value.style.height : undefined;
+  if (
+    (width !== undefined && (!Number.isFinite(width) || width <= 0)) ||
+    (height !== undefined && (!Number.isFinite(height) || height <= 0))
+  )
+    return null;
   const type = value.type === 'groupNode' || data.kind === 'group' || data.isGroup === true ? 'groupNode' : 'architectureNode';
 
   return {
@@ -40,7 +47,9 @@ const normalizeNode = (value: unknown): ArchitectureNode | null => {
     },
     ...(typeof value.parentId === 'string' ? { parentId: value.parentId } : {}),
     ...(value.extent === 'parent' ? { extent: 'parent' as const } : {}),
-    ...(width || height ? { style: { width: width ?? 520, height: height ?? 320 } } : {}),
+    ...(width || height
+      ? { style: { width: width ?? (type === 'groupNode' ? 520 : 208), height: height ?? (type === 'groupNode' ? 320 : 112) } }
+      : {}),
   };
 };
 
@@ -79,6 +88,21 @@ const normalizeEdge = (value: unknown, nodeIds: Set<string>): ArchitectureEdge |
         ? rawLabelOrientation
         : 'auto';
   const data: ArchitectureEdge['data'] = { direction, label, labelMode, labelOrientation, showEndpoints: labelMode !== 'protocol' };
+  if (isRecord(value.data)) {
+    for (const [key, options] of Object.entries({
+      lineStyle: ['solid', 'dashed', 'dotted'],
+      pathStyle: ['smoothstep', 'step', 'straight'],
+      arrowStyle: ['closed', 'open', 'none'],
+    })) {
+      const field = value.data[key];
+      if (field !== undefined && (typeof field !== 'string' || !options.includes(field))) return null;
+      if (field !== undefined) data[key] = field;
+    }
+    if (value.data.color !== undefined) {
+      if (typeof value.data.color !== 'string' || !/^#[\da-f]{6}$/i.test(value.data.color)) return null;
+      data.color = value.data.color;
+    }
+  }
   if (isRecord(value.data) && value.data.handleMode === 'manual') data.handleMode = 'manual';
   if (isRecord(value.data) && typeof value.data.manualLabelOffsetX === 'number') data.manualLabelOffsetX = value.data.manualLabelOffsetX;
   if (isRecord(value.data) && typeof value.data.manualLabelOffsetY === 'number') data.manualLabelOffsetY = value.data.manualLabelOffsetY;
@@ -94,7 +118,7 @@ const normalizeEdge = (value: unknown, nodeIds: Set<string>): ArchitectureEdge |
   };
 };
 
-export const normalizeImportedGraph = (value: unknown): GraphState | null => {
+const normalizeGraph = (value: unknown): GraphState | null => {
   if (!isRecord(value) || !Array.isArray(value.nodes) || !Array.isArray(value.edges)) return null;
 
   const normalizedNodes = value.nodes.map(normalizeNode);
@@ -107,6 +131,7 @@ export const normalizeImportedGraph = (value: unknown): GraphState | null => {
     const visited = new Set([node.id]);
     let parentId = node.parentId;
     while (parentId) {
+      if (visited.size > GRAPH_LIMITS.depth) return null;
       const parent = nodeById.get(parentId);
       if (!parent || parent.type !== 'groupNode' || visited.has(parentId)) return null;
       visited.add(parentId);
@@ -145,6 +170,10 @@ export const toExportableGraph = (graph: GraphState): GraphState => ({
     sourceHandle: edge.sourceHandle,
     targetHandle: edge.targetHandle,
     data: {
+      ...(edge.data?.lineStyle ? { lineStyle: edge.data.lineStyle } : {}),
+      ...(edge.data?.pathStyle ? { pathStyle: edge.data.pathStyle } : {}),
+      ...(edge.data?.color ? { color: edge.data.color } : {}),
+      ...(edge.data?.arrowStyle ? { arrowStyle: edge.data.arrowStyle } : {}),
       direction: edge.data?.direction ?? 'forward',
       handleMode: edge.data?.handleMode ?? 'auto',
       label: edge.data?.label,
@@ -157,3 +186,17 @@ export const toExportableGraph = (graph: GraphState): GraphState => ({
     label: edge.data?.label,
   })),
 });
+
+export const parseImportedGraph = (value: unknown): GraphState => {
+  validateGraphInput(value);
+  const graph = normalizeGraph(value);
+  if (!graph) throw new GraphDataError('reference', '중복 ID, 잘못된 연결/그룹 참조 또는 부모 순환/깊이(최대 32)를 확인하세요.');
+  return { ...graph, nodes: orderParentsFirst(graph.nodes) };
+};
+export const normalizeImportedGraph = (value: unknown): GraphState | null => {
+  try {
+    return parseImportedGraph(value);
+  } catch {
+    return null;
+  }
+};

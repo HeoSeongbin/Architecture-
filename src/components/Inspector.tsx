@@ -2,6 +2,10 @@ import { ArrowLeft, ArrowLeftRight, ArrowRight, CopyPlus, GitBranch, Palette, Ro
 import { useMemo } from 'react';
 import { categoryLabels } from '../utils/assetPresentation';
 import { useGraphStore } from '../store/useGraphStore';
+import { SelectionInspector } from './SelectionInspector';
+import { NodeGeometryEditor } from './NodeGeometryEditor';
+import { EdgeStyleEditor } from './EdgeStyleEditor';
+import { nodeSize } from '../utils/graphEditing';
 
 const accentOptions = ['#2563eb', '#dc2626', '#0f766e', '#0284c7', '#16a34a', '#ea580c', '#65a30d', '#7c3aed', '#0891b2'];
 
@@ -47,17 +51,31 @@ export function Inspector() {
   const selectedEdge = useMemo(() => edges.find((edge) => edge.id === selectedEdgeId), [edges, selectedEdgeId]);
   const sourceNode = useMemo(() => nodes.find((node) => node.id === selectedEdge?.source), [nodes, selectedEdge?.source]);
   const targetNode = useMemo(() => nodes.find((node) => node.id === selectedEdge?.target), [nodes, selectedEdge?.target]);
+  const selection = nodes.filter((node) => node.selected || node.id === selectedNodeId);
+  const selectedEdges = edges.filter((edge) => edge.selected || edge.id === selectedEdgeId);
+  const multiple = selection.length + selectedEdges.length > 1;
+  const geometry = selectedNode ? nodeSize(selectedNode) : undefined;
 
   return (
     <aside aria-label="선택 항목 속성" className="app-inspector flex h-full w-80 shrink-0 flex-col border-l border-slate-200 bg-white">
       <div className="border-b border-slate-200 px-4 py-4">
         <h2 className="text-sm font-semibold">
-          {selectedNode?.type === 'groupNode' ? '그룹 속성' : selectedNode ? '노드 속성' : selectedEdge ? '연결선 속성' : '속성'}
+          {multiple
+            ? '다중 선택'
+            : selectedNode?.type === 'groupNode'
+              ? '그룹 속성'
+              : selectedNode
+                ? '노드 속성'
+                : selectedEdge
+                  ? '연결선 속성'
+                  : '속성'}
         </h2>
         <p className="text-xs text-slate-500">선택한 노드 또는 연결선 편집</p>
       </div>
 
-      {selectedNode ? (
+      {multiple ? (
+        <SelectionInspector key={selection.map((node) => node.id).join(',')} count={selection.length} edgeCount={selectedEdges.length} />
+      ) : selectedNode ? (
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
           <div className="mb-4 rounded border border-slate-200 bg-slate-50 p-3">
             <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -117,6 +135,7 @@ export function Inspector() {
             </div>
           </div>
 
+          <NodeGeometryEditor key={`${selectedNode.id}:${geometry?.width}:${geometry?.height}`} node={selectedNode} />
           <div className="mt-6 grid grid-cols-2 gap-2">
             <button className="secondary-button justify-center" onClick={() => duplicateNode(selectedNode.id)} type="button">
               <CopyPlus size={17} aria-hidden />
@@ -152,6 +171,7 @@ export function Inspector() {
             value={selectedEdge.data?.label ?? ''}
           />
 
+          <EdgeStyleEditor key={`${selectedEdge.id}:${selectedEdge.data?.color ?? selectedEdge.style?.stroke}`} edge={selectedEdge} />
           <div className="field-label">라벨 표시</div>
           <div className="grid grid-cols-3 gap-2">
             {labelModeOptions.map(({ value, label }) => {

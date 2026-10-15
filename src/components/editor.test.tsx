@@ -41,4 +41,49 @@ describe('existing editor integration', () => {
     fireEvent.click(screen.getByRole('button', { name: '양방향' }));
     expect(useGraphStore.getState().edges[0].data).toMatchObject({ label: 'WSS', direction: 'bidirectional' });
   });
+  it('edits node dimensions through Inspector and restores them through undo', () => {
+    useGraphStore.getState().selectNode('react');
+    render(<Inspector />);
+    fireEvent.change(screen.getByLabelText('노드 너비'), { target: { value: '320' } });
+    fireEvent.change(screen.getByLabelText('노드 높이'), { target: { value: '180' } });
+    fireEvent.click(screen.getByRole('button', { name: '크기 적용' }));
+    expect(useGraphStore.getState().nodes[0].style).toMatchObject({ width: 320, height: 180 });
+    useGraphStore.getState().undo();
+    expect(useGraphStore.getState().nodes[0].style).toBeUndefined();
+  });
+  it('edits line, path, color and arrow properties through Inspector', () => {
+    useGraphStore.getState().selectEdge(sampleGraph.edges[0].id);
+    render(<Inspector />);
+    fireEvent.change(screen.getByLabelText('선 종류'), { target: { value: 'dashed' } });
+    fireEvent.change(screen.getByLabelText('경로 모양'), { target: { value: 'straight' } });
+    fireEvent.change(screen.getByLabelText('화살표 모양'), { target: { value: 'none' } });
+    fireEvent.change(screen.getByLabelText('연결선 색상 코드'), { target: { value: '#ff0000' } });
+    fireEvent.click(screen.getByRole('button', { name: '색상 적용' }));
+    expect(useGraphStore.getState().edges[0].data).toMatchObject({
+      lineStyle: 'dashed',
+      pathStyle: 'straight',
+      arrowStyle: 'none',
+      color: '#ff0000',
+    });
+    expect(useGraphStore.getState().edges[0].markerEnd).toBeUndefined();
+    fireEvent.change(screen.getByLabelText('연결선 색상'), { target: { value: '#00ff00' } });
+    expect(useGraphStore.getState().edges[0].data?.color).toBe('#00ff00');
+  });
+  it('applies common node properties once for multi-selection', () => {
+    useGraphStore.getState().onNodesChange([
+      { type: 'select', id: 'react', selected: true },
+      { type: 'select', id: 'nginx', selected: true },
+    ]);
+    render(<Inspector />);
+    expect(screen.getByRole('heading', { name: '다중 선택' })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('공통 부제목'), { target: { value: '일괄 수정' } });
+    fireEvent.click(screen.getByRole('button', { name: '공통 속성 적용' }));
+    expect(
+      useGraphStore
+        .getState()
+        .nodes.slice(0, 2)
+        .every((item) => item.data.subtitle === '일괄 수정'),
+    ).toBe(true);
+    expect(useGraphStore.getState().past).toHaveLength(1);
+  });
 });
