@@ -17,6 +17,7 @@ import { ArchitectureNodeCard } from './CustomNodes/ArchitectureNodeCard';
 import { GroupNodeCard } from './CustomNodes/GroupNodeCard';
 import { useGraphStore } from '../store/useGraphStore';
 import type { ArchitectureEdge as ArchitectureEdgeType, ArchitectureNode, ArchitectureNodeData } from '../types/graph';
+import type { EditorTheme } from '../hooks/useEditorTheme';
 
 const nodeTypes: NodeTypes = {
   architectureNode: ArchitectureNodeCard,
@@ -61,9 +62,10 @@ const findGroupAtPosition = (position: { x: number; y: number }, nodes: Architec
 
 interface ArchitectureCanvasProps {
   showGrid: boolean;
+  theme: EditorTheme;
 }
 
-export function ArchitectureCanvas({ showGrid }: ArchitectureCanvasProps) {
+export function ArchitectureCanvas({ showGrid, theme }: ArchitectureCanvasProps) {
   const { screenToFlowPosition } = useReactFlow();
   const nodes = useGraphStore((state) => state.nodes);
   const edges = useGraphStore((state) => state.edges);
@@ -129,12 +131,20 @@ export function ArchitectureCanvas({ showGrid }: ArchitectureCanvasProps) {
     <div className="min-h-0 flex-1">
       <ReactFlow
         className="architecture-flow"
-        colorMode="light"
+        colorMode={theme}
+        ariaLabelConfig={{
+          'controls.zoomIn.ariaLabel': '확대',
+          'controls.zoomOut.ariaLabel': '축소',
+          'controls.fitView.ariaLabel': '전체 보기',
+          'controls.interactive.ariaLabel': '캔버스 조작 잠금 전환',
+          'minimap.ariaLabel': '다이어그램 미니맵',
+        }}
         connectionMode={ConnectionMode.Loose}
         deleteKeyCode={['Backspace', 'Delete']}
         edgeTypes={edgeTypes}
         edges={visibleEdges}
         fitView
+        minZoom={0.1}
         fitViewOptions={{ padding: 0.25 }}
         nodeTypes={nodeTypes}
         nodes={nodes}
@@ -150,11 +160,13 @@ export function ArchitectureCanvas({ showGrid }: ArchitectureCanvasProps) {
           selectEdge(selectedNodeId ? null : (selectedEdges[0]?.id ?? null));
         }}
       >
-        {showGrid ? <Background color="#cbd5e1" gap={22} size={1.4} variant={BackgroundVariant.Dots} /> : null}
+        {showGrid ? (
+          <Background color={theme === 'dark' ? '#334155' : '#cbd5e1'} gap={22} size={1.4} variant={BackgroundVariant.Dots} />
+        ) : null}
         <Controls position="bottom-right" />
         <MiniMap
           className="!bg-white !shadow-md"
-          maskColor="rgba(15, 23, 42, 0.08)"
+          maskColor={theme === 'dark' ? 'rgba(2, 6, 23, 0.5)' : 'rgba(15, 23, 42, 0.08)'}
           nodeColor={(node) => String((node.data as ArchitectureNodeData).accent ?? '#64748b')}
           pannable
           position="bottom-left"

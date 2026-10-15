@@ -1,0 +1,46 @@
+import {
+  Cloud,
+  Container,
+  Database,
+  Globe2,
+  MonitorSmartphone,
+  Network,
+  Server,
+  Shield,
+  SplitSquareHorizontal,
+  TerminalSquare,
+  Workflow,
+} from 'lucide-react';
+import type { ArchitectureNodeKind } from '../types/graph';
+
+export const categoryLabels: Record<string, string> = {
+  Database: '데이터베이스',
+  Server: '서버',
+  Application: '애플리케이션',
+  Cloud: '클라우드',
+  Network: '네트워크',
+  Group: '그룹 영역',
+};
+export const assetIcons: Record<ArchitectureNodeKind, typeof Server> = {
+  mssql: Database,
+  oracle: Database,
+  mariadb: Database,
+  postgresql: Database,
+  mongodb: Database,
+  redis: Database,
+  docker: Container,
+  nginx: Network,
+  wsl: TerminalSquare,
+  nodejs: Server,
+  python: TerminalSquare,
+  spring: Server,
+  aspnet: Globe2,
+  react: MonitorSmartphone,
+  aws: Cloud,
+  azure: Cloud,
+  gcp: Cloud,
+  loadbalancer: SplitSquareHorizontal,
+  firewall: Shield,
+  queue: Workflow,
+  group: Server,
+};

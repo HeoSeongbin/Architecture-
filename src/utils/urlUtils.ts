@@ -110,7 +110,9 @@ const minifyGraph = (state: GraphState): MinifiedGraph => ({
     t: edge.target,
     ...(edge.data?.label ? { l: edge.data.label } : {}),
     ...(minifyDirection(edge.data?.direction) ? { d: minifyDirection(edge.data?.direction) } : {}),
-    ...(minifyLabelMode(edge.data?.labelMode, edge.data?.showEndpoints) ? { m: minifyLabelMode(edge.data?.labelMode, edge.data?.showEndpoints) } : {}),
+    ...(minifyLabelMode(edge.data?.labelMode, edge.data?.showEndpoints)
+      ? { m: minifyLabelMode(edge.data?.labelMode, edge.data?.showEndpoints) }
+      : {}),
     ...(minifyLabelOrientation(edge.data?.labelOrientation) ? { r: minifyLabelOrientation(edge.data?.labelOrientation) } : {}),
     ...(edge.data?.handleMode === 'manual' ? { h: 1 as const } : {}),
     ...(edge.data?.manualLabelOffsetX ? { ox: Math.round(edge.data.manualLabelOffsetX) } : {}),
@@ -166,9 +168,7 @@ export const encodeStateToUrl = (state: GraphState) => {
   return toUrlSafe(base64.encode(bytesToBinary(compressed)));
 };
 
-export const decodeStateFromUrl = (
-  hash: string,
-): { ok: true; state: GraphState } | { ok: false; state: GraphState; error: unknown } => {
+export const decodeStateFromUrl = (hash: string): { ok: true; state: GraphState } | { ok: false; state: GraphState; error: unknown } => {
   const value = hash.replace(/^#/, '').trim();
   if (!value) return { ok: true, state: { nodes: [], edges: [] } };
 

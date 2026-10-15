@@ -1,10 +1,4 @@
-import {
-  BaseEdge,
-  EdgeLabelRenderer,
-  Position,
-  getSmoothStepPath,
-  type EdgeProps,
-} from '@xyflow/react';
+import { BaseEdge, EdgeLabelRenderer, Position, getSmoothStepPath, type EdgeProps } from '@xyflow/react';
 import type { ArchitectureEdge as ArchitectureEdgeType } from '../../types/graph';
 
 const splitLabel = (label: string) => {
@@ -99,9 +93,7 @@ export function ArchitectureEdge({
     data?.targetTerminalOffset,
   );
   const routedPath =
-    routePoints.length > 1
-      ? routePoints.map((point, index) => `${index === 0 ? 'M' : 'L'}${point.x} ${point.y}`).join(' ')
-      : edgePath;
+    routePoints.length > 1 ? routePoints.map((point, index) => `${index === 0 ? 'M' : 'L'}${point.x} ${point.y}`).join(' ') : edgePath;
   const centerPoint = routePoints[Math.floor(routePoints.length / 2)];
   const lines = splitLabel(data?.renderLabel ?? data?.label ?? '');
   const translateX = (centerPoint?.x ?? labelX) + (data?.labelOffsetX ?? 0);
@@ -114,14 +106,7 @@ export function ArchitectureEdge({
 
   return (
     <>
-      <BaseEdge
-        id={id}
-        interactionWidth={24}
-        markerEnd={markerEnd}
-        markerStart={markerStart}
-        path={routedPath}
-        style={style}
-      />
+      <BaseEdge id={id} interactionWidth={24} markerEnd={markerEnd} markerStart={markerStart} path={routedPath} style={style} />
       {lines.length > 0 ? (
         <EdgeLabelRenderer>
           <div

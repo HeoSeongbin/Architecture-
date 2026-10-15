@@ -1,8 +1,7 @@
 import type { ArchitectureEdge, ArchitectureNode, GraphState } from '../types/graph';
 import { presentGraph } from './edgeUtils';
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const normalizeNode = (value: unknown): ArchitectureNode | null => {
   if (!isRecord(value) || typeof value.id !== 'string' || !isRecord(value.position) || !isRecord(value.data)) {
@@ -11,8 +10,8 @@ const normalizeNode = (value: unknown): ArchitectureNode | null => {
 
   const { data, position } = value;
   if (
-    typeof position.x !== 'number' ||
-    typeof position.y !== 'number' ||
+    !Number.isFinite(position.x) ||
+    !Number.isFinite(position.y) ||
     typeof data.kind !== 'string' ||
     typeof data.label !== 'string' ||
     typeof data.subtitle !== 'string' ||
@@ -29,7 +28,7 @@ const normalizeNode = (value: unknown): ArchitectureNode | null => {
   return {
     id: value.id,
     type,
-    position: { x: position.x, y: position.y },
+    position: { x: position.x as number, y: position.y as number },
     data: {
       kind: data.kind as ArchitectureNode['data']['kind'],
       label: data.label,
@@ -52,10 +51,14 @@ const normalizeEdge = (value: unknown, nodeIds: Set<string>): ArchitectureEdge |
 
   if (!nodeIds.has(value.source) || !nodeIds.has(value.target)) return null;
 
-  const label = isRecord(value.data) && typeof value.data.label === 'string' ? value.data.label : undefined;
+  const label =
+    isRecord(value.data) && typeof value.data.label === 'string'
+      ? value.data.label
+      : typeof value.label === 'string'
+        ? value.label
+        : undefined;
   const rawDirection = isRecord(value.data) && typeof value.data.direction === 'string' ? value.data.direction : undefined;
-  const direction =
-    rawDirection === 'reverse' || rawDirection === 'bidirectional' || rawDirection === 'forward' ? rawDirection : 'forward';
+  const direction = rawDirection === 'reverse' || rawDirection === 'bidirectional' || rawDirection === 'forward' ? rawDirection : 'forward';
   const showEndpoints = isRecord(value.data) && value.data.showEndpoints === true;
   const rawLabelMode = isRecord(value.data) && typeof value.data.labelMode === 'string' ? value.data.labelMode : undefined;
   const labelMode =
@@ -94,9 +97,26 @@ const normalizeEdge = (value: unknown, nodeIds: Set<string>): ArchitectureEdge |
 export const normalizeImportedGraph = (value: unknown): GraphState | null => {
   if (!isRecord(value) || !Array.isArray(value.nodes) || !Array.isArray(value.edges)) return null;
 
-  const nodes = value.nodes.map(normalizeNode).filter((node): node is ArchitectureNode => Boolean(node));
+  const normalizedNodes = value.nodes.map(normalizeNode);
+  if (normalizedNodes.some((node) => !node)) return null;
+  const nodes = normalizedNodes as ArchitectureNode[];
   const nodeIds = new Set(nodes.map((node) => node.id));
-  const edges = value.edges.map((edge) => normalizeEdge(edge, nodeIds)).filter((edge): edge is ArchitectureEdge => Boolean(edge));
+  if (nodeIds.size !== nodes.length || nodes.some((node) => !node.id)) return null;
+  const nodeById = new Map(nodes.map((node) => [node.id, node]));
+  for (const node of nodes) {
+    const visited = new Set([node.id]);
+    let parentId = node.parentId;
+    while (parentId) {
+      const parent = nodeById.get(parentId);
+      if (!parent || parent.type !== 'groupNode' || visited.has(parentId)) return null;
+      visited.add(parentId);
+      parentId = parent.parentId;
+    }
+  }
+  const normalizedEdges = value.edges.map((edge) => normalizeEdge(edge, nodeIds));
+  if (normalizedEdges.some((edge) => !edge)) return null;
+  const edges = normalizedEdges as ArchitectureEdge[];
+  if (new Set(edges.map((edge) => edge.id)).size !== edges.length || edges.some((edge) => !edge.id)) return null;
 
   return presentGraph({ nodes, edges });
 };

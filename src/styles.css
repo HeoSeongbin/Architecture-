@@ -14,7 +14,14 @@ body,
 }
 
 body {
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
 }
 
 @layer components {
@@ -93,8 +100,11 @@ body {
 
   .group-node {
     @apply h-full w-full rounded border p-3 shadow-sm transition;
-    background:
-      linear-gradient(180deg, color-mix(in srgb, var(--node-accent) 16%, white), color-mix(in srgb, var(--node-accent) 8%, white));
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--node-accent) 16%, white),
+      color-mix(in srgb, var(--node-accent) 8%, white)
+    );
     border-color: color-mix(in srgb, var(--node-accent) 42%, white);
     border-top: 5px solid var(--node-accent);
     box-shadow:
@@ -157,11 +167,6 @@ body {
   .architecture-edge-label-selected {
     @apply border-slate-400 bg-slate-50 text-slate-950 ring-2 ring-slate-300;
   }
-
-}
-
-.react-flow__attribution {
-  display: none;
 }
 
 .react-flow__edge path {
@@ -201,5 +206,553 @@ body {
     justify-content: flex-start;
     overflow-x: auto;
     padding-bottom: 0.125rem;
+  }
+}
+
+/* Editor surfaces share tokens with React Flow. Graph data contains no theme state. */
+:root {
+  --editor-bg: #eef2f6;
+  --editor-surface: #ffffff;
+  --editor-muted: #f8fafc;
+  --editor-hover: #eaf0f7;
+  --editor-border: #dce4ee;
+  --editor-text: #17243b;
+  --editor-secondary: #52627a;
+  --editor-accent: #0369a1;
+  --editor-focus: #0284c7;
+  --editor-danger: #b91c1c;
+}
+:root[data-theme='dark'] {
+  --editor-bg: #0b1120;
+  --editor-surface: #182235;
+  --editor-muted: #111827;
+  --editor-hover: #24334a;
+  --editor-border: #34435a;
+  --editor-text: #e5edf8;
+  --editor-secondary: #a6b5cc;
+  --editor-accent: #7dd3fc;
+  --editor-focus: #38bdf8;
+  --editor-danger: #fca5a5;
+}
+body {
+  background: var(--editor-bg);
+}
+button,
+summary,
+select {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+[hidden] {
+  display: none !important;
+}
+.editor-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  width: 100%;
+  overflow: hidden;
+  color: var(--editor-text);
+  background: var(--editor-bg);
+}
+.editor-shell :focus-visible {
+  outline: 2px solid var(--editor-focus);
+  outline-offset: 3px;
+}
+.editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 20px;
+  background: var(--editor-surface);
+  border-bottom: 1px solid var(--editor-border);
+  z-index: 30;
+}
+.editor-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: #0369a1;
+  color: white;
+  font-size: 22px;
+  font-weight: 800;
+}
+.editor-brand h1 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+}
+.editor-brand p {
+  font-size: 11px;
+  margin-top: 3px;
+  color: var(--editor-secondary);
+}
+.editor-toolbar,
+.tool-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.tool-group {
+  padding-right: 8px;
+  border-right: 1px solid var(--editor-border);
+}
+.tool-menu {
+  position: relative;
+  font-size: 13px;
+}
+.tool-menu summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--editor-border);
+  border-radius: 7px;
+  list-style: none;
+}
+.tool-menu summary::-webkit-details-marker {
+  display: none;
+}
+.tool-menu summary::after {
+  content: '⌄';
+}
+.tool-menu[open] summary,
+.tool-menu summary:hover {
+  background: var(--editor-hover);
+}
+.tool-menu-content {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 214px;
+  padding: 8px;
+  border: 1px solid var(--editor-border);
+  border-radius: 10px;
+  background: var(--editor-surface);
+  box-shadow: 0 12px 30px #0003;
+}
+.tool-menu-content button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 38px;
+  border-radius: 6px;
+  text-align: left;
+  padding: 7px 9px;
+}
+.tool-menu-content button:hover {
+  background: var(--editor-hover);
+}
+.tool-menu-content label {
+  display: block;
+  font-size: 11px;
+  padding: 12px 8px 6px;
+  color: var(--editor-secondary);
+}
+.tool-menu-content .menu-danger {
+  color: var(--editor-danger);
+}
+.editor-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+.editor-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex-shrink: 0;
+  background: var(--editor-surface);
+}
+.editor-workspace {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+}
+.editor-workspace > div {
+  width: 100%;
+}
+.editor-workspace:focus {
+  outline-offset: -3px;
+}
+.app-sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  width: 256px;
+  border-right: 1px solid var(--editor-border);
+}
+.app-inspector {
+  width: 292px;
+}
+.panel-heading {
+  padding: 22px 18px 16px;
+  border-bottom: 1px solid var(--editor-border);
+}
+.eyebrow {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--editor-accent);
+  margin-bottom: 5px;
+}
+.panel-heading h2 {
+  font-size: 17px;
+  font-weight: 750;
+}
+.panel-heading p {
+  font-size: 11px;
+  color: var(--editor-secondary);
+  margin-top: 5px;
+}
+.asset-search {
+  position: relative;
+  display: block;
+  margin-top: 16px;
+}
+.asset-search svg {
+  position: absolute;
+  top: 12px;
+  left: 10px;
+  color: var(--editor-secondary);
+  pointer-events: none;
+}
+.asset-search input {
+  padding-left: 34px;
+}
+.asset-list {
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+  min-height: 0;
+  padding: 10px 12px;
+}
+.asset-category {
+  margin-bottom: 12px;
+}
+.category-toggle {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 5px;
+  color: var(--editor-secondary);
+  font-size: 11px;
+  font-weight: 700;
+}
+.asset-items {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+}
+.editor-shell .asset-button {
+  border: 1px solid var(--editor-border);
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: none;
+  transform: none;
+}
+.editor-shell .asset-button:hover {
+  background: var(--editor-hover);
+  border-color: var(--editor-focus);
+}
+.asset-preview {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  color: var(--node-accent);
+  background: color-mix(in srgb, var(--node-accent) 12%, var(--editor-surface));
+}
+.panel-hint {
+  font-size: 10px;
+  color: var(--editor-secondary);
+  border-top: 1px solid var(--editor-border);
+  padding: 12px;
+}
+.empty-search {
+  padding: 28px 8px;
+  font-size: 13px;
+  color: var(--editor-secondary);
+  text-align: center;
+}
+.inspector-help {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--editor-secondary);
+  text-align: left;
+}
+.inspector-help h3 {
+  font-size: 16px;
+  color: var(--editor-text);
+  font-weight: 700;
+  margin: 12px 0 6px;
+}
+.help-symbol {
+  display: inline-grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  background: var(--editor-hover);
+  color: var(--editor-accent);
+  border-radius: 12px;
+  font-size: 24px;
+}
+.inspector-help dl {
+  border-top: 1px solid var(--editor-border);
+  margin-top: 22px;
+  padding-top: 10px;
+}
+.inspector-help dt {
+  font-weight: 700;
+  color: var(--editor-text);
+  margin-top: 10px;
+}
+.editor-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 36px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--editor-border);
+  background: var(--editor-surface);
+  font-size: 11px;
+  color: var(--editor-secondary);
+}
+.editor-footer p {
+  margin: 0;
+}
+.editor-footer [role='alert'],
+.feedback-error {
+  color: var(--editor-danger);
+}
+.diagram-stats {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.skip-link {
+  position: absolute;
+  left: 12px;
+  top: -80px;
+  z-index: 100;
+  padding: 12px;
+  background: var(--editor-surface);
+  border: 2px solid var(--editor-focus);
+  border-radius: 6px;
+}
+.skip-link:focus {
+  top: 8px;
+}
+.panel-close {
+  margin: 10px;
+}
+.canvas-loading {
+  display: grid;
+  place-items: center;
+  color: var(--editor-secondary);
+}
+
+/* Bridge existing utility classes to the theme without changing persisted node colors. */
+.editor-shell .bg-white,
+.editor-shell .asset-button {
+  background-color: var(--editor-surface);
+}
+.editor-shell .bg-slate-50,
+.editor-shell .bg-slate-100 {
+  background-color: var(--editor-muted);
+}
+.editor-shell .text-slate-950,
+.editor-shell .text-slate-900,
+.editor-shell .text-slate-800,
+.editor-shell .text-slate-700 {
+  color: var(--editor-text);
+}
+.editor-shell .text-slate-600,
+.editor-shell .text-slate-500,
+.editor-shell .text-slate-400 {
+  color: var(--editor-secondary);
+}
+.editor-shell .border-slate-200,
+.editor-shell .border-slate-100 {
+  border-color: var(--editor-border);
+}
+.editor-shell .icon-button,
+.editor-shell .secondary-button,
+.editor-shell .danger-button,
+.editor-shell .field-input,
+.editor-shell .field-textarea {
+  background: var(--editor-surface);
+  color: var(--editor-text);
+  border-color: var(--editor-border);
+  border-radius: 7px;
+}
+.editor-shell .icon-button:hover,
+.editor-shell .secondary-button:hover {
+  background: var(--editor-hover);
+  color: var(--editor-text);
+}
+.editor-shell .secondary-button[aria-pressed='true'] {
+  background: var(--editor-hover);
+  border-color: var(--editor-focus);
+}
+.editor-shell .primary-button {
+  background: #0369a1;
+  color: white;
+  border-radius: 7px;
+}
+.editor-shell .primary-button:hover {
+  background: #075985;
+}
+.editor-shell .danger-button {
+  color: var(--editor-danger);
+}
+.editor-shell .architecture-flow {
+  background: var(--editor-muted);
+}
+.editor-shell .architecture-node {
+  background: var(--editor-surface);
+  border-color: var(--editor-border);
+  border-top-color: var(--node-accent);
+  border-radius: 10px;
+  box-shadow: 0 5px 14px #0002;
+}
+.editor-shell .architecture-node-selected {
+  outline: 2px solid var(--editor-focus);
+  outline-offset: 3px;
+}
+.editor-shell .node-status {
+  background: var(--editor-hover);
+  color: var(--editor-secondary);
+}
+.editor-shell .group-node {
+  background: color-mix(in srgb, var(--node-accent) 12%, var(--editor-surface));
+}
+.editor-shell .group-node-header,
+.editor-shell .group-node-note,
+.editor-shell .group-node-badge {
+  background: color-mix(in srgb, var(--editor-surface) 88%, transparent);
+  color: var(--editor-secondary);
+}
+.editor-shell .group-node-selected {
+  outline: 2px solid var(--editor-focus);
+  outline-offset: 3px;
+}
+.editor-shell .architecture-edge-label {
+  background: var(--editor-surface);
+  border-color: var(--editor-border);
+  color: var(--editor-text);
+}
+.editor-shell .architecture-edge-label-selected {
+  outline: 2px solid var(--editor-focus);
+}
+.editor-shell .react-flow {
+  --xy-controls-button-background-color-default: var(--editor-surface);
+  --xy-controls-button-color-default: var(--editor-text);
+  --xy-controls-button-border-color-default: var(--editor-border);
+  --xy-controls-button-background-color-hover-default: var(--editor-hover);
+}
+.editor-shell .react-flow__minimap {
+  background: var(--editor-surface) !important;
+  border: 1px solid var(--editor-border);
+  border-radius: 8px;
+}
+.editor-shell .react-flow__attribution {
+  background: var(--editor-surface);
+  color: var(--editor-secondary);
+}
+@media (max-width: 1180px) {
+  .editor-brand p {
+    display: none;
+  }
+  .app-sidebar {
+    width: 224px;
+  }
+  .app-inspector {
+    width: 260px;
+  }
+}
+@media (max-width: 900px) {
+  .editor-header {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+  .editor-brand {
+    width: 100%;
+  }
+  .editor-toolbar {
+    width: 100%;
+    gap: 5px;
+  }
+  .editor-panel {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 20;
+    width: min(320px, 90vw);
+    box-shadow: 0 12px 30px #0004;
+  }
+  .assets-panel {
+    left: 0;
+  }
+  .inspector-panel {
+    right: 0;
+  }
+  .app-sidebar,
+  .app-inspector {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    flex: 1;
+  }
+  .diagram-stats {
+    display: none;
+  }
+  .tool-menu-content {
+    position: fixed;
+    top: auto;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+  .editor-toolbar .primary-button {
+    padding: 0 10px;
+  }
+  .react-flow__minimap svg {
+    width: 140px;
+    height: 105px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .editor-shell *,
+  .editor-shell *::before,
+  .editor-shell *::after {
+    transition: none !important;
+    animation: none !important;
   }
 }

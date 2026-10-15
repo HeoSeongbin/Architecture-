@@ -1,12 +1,5 @@
 import { create } from 'zustand';
-import {
-  addEdge,
-  applyEdgeChanges,
-  applyNodeChanges,
-  type Connection,
-  type EdgeChange,
-  type NodeChange,
-} from '@xyflow/react';
+import { addEdge, applyEdgeChanges, applyNodeChanges, type Connection, type EdgeChange, type NodeChange } from '@xyflow/react';
 import type { CSSProperties } from 'react';
 import ELK from 'elkjs/lib/elk.bundled.js';
 import type { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk-api';
@@ -14,6 +7,7 @@ import type { ArchitectureEdge, ArchitectureEdgeData, ArchitectureNode, GraphSta
 import { presentGraph } from '../utils/edgeUtils';
 
 const HISTORY_LIMIT = 80;
+let pendingMove: GraphState | undefined;
 
 const cloneGraph = (graph: GraphState): GraphState => ({
   nodes: structuredClone(graph.nodes),
@@ -95,14 +89,10 @@ const getEdgeHandles = (source?: ArchitectureNode, target?: ArchitectureNode) =>
   const dy = target.position.y - source.position.y;
 
   if (Math.abs(dx) >= Math.abs(dy)) {
-    return dx >= 0
-      ? { sourceHandle: 'right', targetHandle: 'left' }
-      : { sourceHandle: 'left', targetHandle: 'right' };
+    return dx >= 0 ? { sourceHandle: 'right', targetHandle: 'left' } : { sourceHandle: 'left', targetHandle: 'right' };
   }
 
-  return dy >= 0
-    ? { sourceHandle: 'bottom', targetHandle: 'top' }
-    : { sourceHandle: 'top', targetHandle: 'bottom' };
+  return dy >= 0 ? { sourceHandle: 'bottom', targetHandle: 'top' } : { sourceHandle: 'top', targetHandle: 'bottom' };
 };
 
 const applyDirectionalHandles = (nodes: ArchitectureNode[], edges: ArchitectureEdge[]) =>
@@ -206,10 +196,7 @@ const syncNodeGroup = (nodeId: string, nodes: ArchitectureNode[]) => {
   });
 };
 
-const orderNodesForGroups = (nodes: ArchitectureNode[]) => [
-  ...nodes.filter(isGroupNode),
-  ...nodes.filter((node) => !isGroupNode(node)),
-];
+const orderNodesForGroups = (nodes: ArchitectureNode[]) => [...nodes.filter(isGroupNode), ...nodes.filter((node) => !isGroupNode(node))];
 
 const elk = new ELK();
 
@@ -330,6 +317,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
   canUndo: false,
   canRedo: false,
   setGraph: (graph) => {
+    pendingMove = undefined;
     const presentedGraph = presentGraph(graph);
 
     return set({
@@ -345,6 +333,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
   },
   replaceGraph: (graph) =>
     set((state) => {
+      pendingMove = undefined;
       const pastState = pushHistory(state);
       const presentedGraph = presentGraph(graph);
 
@@ -363,7 +352,8 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       const pastState = pushHistory(state);
       return {
         ...pastState,
-        nodes: orderNodesForGroups([...state.nodes, node]),
+        nodes: orderNodesForGroups([...state.nodes.map((item) => ({ ...item, selected: false })), { ...node, selected: true }]),
+        edges: state.edges.map((edge) => ({ ...edge, selected: false })),
         selectedNodeId: node.id,
         selectedEdgeId: null,
         canUndo: pastState.past.length > 0,
@@ -417,9 +407,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
             ...edge.data,
             ...data,
             routePoints:
-              data?.handleMode === 'manual' ||
-              typeof data?.manualLabelOffsetX === 'number' ||
-              typeof data?.manualLabelOffsetY === 'number'
+              data?.handleMode === 'manual' || typeof data?.manualLabelOffsetX === 'number' || typeof data?.manualLabelOffsetY === 'number'
                 ? undefined
                 : edge.data?.routePoints,
           },
@@ -510,28 +498,29 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       if (!nodeToDelete) return state;
 
       const pastState = pushHistory(state);
-      const nodes = orderNodesForGroups(state.nodes
-        .filter((node) => node.id !== nodeId)
-        .map((node) => {
-          if (node.parentId !== nodeId) return node;
+      const nodes = orderNodesForGroups(
+        state.nodes
+          .filter((node) => node.id !== nodeId)
+          .map((node) => {
+            if (node.parentId !== nodeId) return node;
 
-          const absolutePosition = getAbsolutePosition(node, state.nodes);
-          const { parentId: _parentId, extent: _extent, ...rest } = node;
-          return {
-            ...rest,
-            position: absolutePosition,
-          };
-        }));
+            const absolutePosition = getAbsolutePosition(node, state.nodes);
+            const { parentId: _parentId, extent: _extent, ...rest } = node;
+            return {
+              ...rest,
+              position: absolutePosition,
+            };
+          }),
+      );
 
       return {
         ...pastState,
         nodes,
         edges: state.edges.filter((edge) => edge.source !== nodeId && edge.target !== nodeId),
         selectedNodeId: state.selectedNodeId === nodeId ? null : state.selectedNodeId,
-        selectedEdgeId:
-          state.edges.some((edge) => edge.id === state.selectedEdgeId && (edge.source === nodeId || edge.target === nodeId))
-            ? null
-            : state.selectedEdgeId,
+        selectedEdgeId: state.edges.some((edge) => edge.id === state.selectedEdgeId && (edge.source === nodeId || edge.target === nodeId))
+          ? null
+          : state.selectedEdgeId,
         canUndo: pastState.past.length > 0,
         canRedo: false,
       };
@@ -560,6 +549,8 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
 
     try {
       const layout = await elk.layout(toElkGraph(layoutNodes, layoutEdges));
+      // A layout result belongs only to the graph that started the request.
+      if (get().nodes !== state.nodes || get().edges !== state.edges) return;
       const nodes = state.nodes.map((node) => {
         const elkNode = layout.children?.find((item) => item.id === node.id);
         if (!elkNode) return { ...node, selected: false };
@@ -596,12 +587,13 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       });
     } catch {
       const latestState = get();
+      if (latestState.nodes !== state.nodes || latestState.edges !== state.edges) return;
       const latestLayoutNodes = latestState.nodes.filter((node) => !isGroupNode(node) && !node.parentId);
       const latestLayoutNodeIds = new Set(latestLayoutNodes.map((node) => node.id));
-      const latestLayoutEdges = latestState.edges.filter((edge) => latestLayoutNodeIds.has(edge.source) && latestLayoutNodeIds.has(edge.target));
-      const layoutNodeMap = new Map(
-        getLayeredFallbackLayout(latestLayoutNodes, latestLayoutEdges).map((node) => [node.id, node]),
+      const latestLayoutEdges = latestState.edges.filter(
+        (edge) => latestLayoutNodeIds.has(edge.source) && latestLayoutNodeIds.has(edge.target),
       );
+      const layoutNodeMap = new Map(getLayeredFallbackLayout(latestLayoutNodes, latestLayoutEdges).map((node) => [node.id, node]));
       const nodes = latestState.nodes.map((node) => layoutNodeMap.get(node.id) ?? { ...node, selected: false });
       const edges = applyDirectionalHandles(nodes, clearEdgeRoutes(latestState.edges));
       const graph = presentGraph({ nodes, edges });
@@ -619,6 +611,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
   },
   undo: () =>
     set((state) => {
+      pendingMove = undefined;
       const previous = state.past.at(-1);
       if (!previous) return state;
 
@@ -637,6 +630,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
     }),
   redo: () =>
     set((state) => {
+      pendingMove = undefined;
       const next = state.future[0];
       if (!next) return state;
 
@@ -655,8 +649,17 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
     }),
   onNodesChange: (changes) =>
     set((state) => {
+      const isMoving = changes.some((change) => change.type === 'position' && change.dragging === true);
+      const finishedMove = changes.some((change) => change.type === 'position' && change.dragging === false);
+      if (isMoving && !pendingMove) pendingMove = cloneGraph(state);
       const hasGraphChange = changes.some(shouldRecordNodeChange);
-      const nodes = orderNodesForGroups(applyNodeChanges(changes, state.nodes));
+      const removedIds = new Set(changes.filter((change) => change.type === 'remove').map((change) => change.id));
+      const survivingNodes = state.nodes.map((node) => {
+        if (!node.parentId || !removedIds.has(node.parentId)) return node;
+        const { parentId: _parentId, extent: _extent, ...rest } = node;
+        return { ...rest, position: getAbsolutePosition(node, state.nodes) };
+      });
+      const nodes = orderNodesForGroups(applyNodeChanges(changes, survivingNodes));
       const selectedNodeId = changes.some((change) => change.type === 'remove' && change.id === state.selectedNodeId)
         ? null
         : state.selectedNodeId;
@@ -667,12 +670,16 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       )
         ? null
         : state.selectedEdgeId;
-      const pastState = hasGraphChange ? pushHistory(state) : { past: state.past, future: state.future };
+      const pastState = hasGraphChange
+        ? pushHistory(finishedMove && pendingMove ? { ...state, ...pendingMove } : state)
+        : { past: state.past, future: state.future };
+      if (finishedMove || removedIds.size) pendingMove = undefined;
+      const edges = state.edges.filter((edge) => !removedIds.has(edge.source) && !removedIds.has(edge.target));
 
       return {
         ...pastState,
         nodes,
-        edges: hasGraphChange ? presentGraph({ nodes, edges: clearEdgeRoutes(state.edges) }).edges : state.edges,
+        edges: hasGraphChange ? presentGraph({ nodes, edges: clearEdgeRoutes(edges) }).edges : state.edges,
         selectedNodeId,
         selectedEdgeId,
         canUndo: pastState.past.length > 0,

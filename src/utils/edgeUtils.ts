@@ -21,8 +21,7 @@ const getArrowMarker = (color: string) => ({
 });
 
 export const getEdgeDirection = (data?: ArchitectureEdgeData) => data?.direction ?? 'forward';
-export const getEdgeLabelMode = (data?: ArchitectureEdgeData) =>
-  data?.labelMode ?? (data?.showEndpoints ? 'compact' : 'protocol');
+export const getEdgeLabelMode = (data?: ArchitectureEdgeData) => data?.labelMode ?? (data?.showEndpoints ? 'compact' : 'protocol');
 
 const getNodeLabel = (node?: ArchitectureNode) => node?.data.label ?? node?.id ?? 'Unknown';
 const getNodeFullLabel = (node?: ArchitectureNode) => {
@@ -45,7 +44,11 @@ const getDisplayedLabel = (edge: ArchitectureEdge, nodes: ArchitectureNode[]) =>
   const target = labelMode === 'full' ? getNodeFullLabel(targetNode) : getNodeLabel(targetNode);
   const direction = getEdgeDirection(edge.data);
   const endpoints =
-    direction === 'reverse' ? `${target} -> ${source}` : direction === 'bidirectional' ? `${source} <-> ${target}` : `${source} -> ${target}`;
+    direction === 'reverse'
+      ? `${target} -> ${source}`
+      : direction === 'bidirectional'
+        ? `${source} <-> ${target}`
+        : `${source} -> ${target}`;
 
   return label ? `${endpoints} / ${label}` : endpoints;
 };
@@ -54,11 +57,7 @@ type EdgePresentation = Partial<ArchitectureEdge> & {
   pathOptions?: { offset: number };
 };
 
-export const getEdgeVisuals = (
-  data?: ArchitectureEdgeData,
-  color = DEFAULT_EDGE_COLOR,
-  routeOffset?: number,
-): EdgePresentation => {
+export const getEdgeVisuals = (data?: ArchitectureEdgeData, color = DEFAULT_EDGE_COLOR, routeOffset?: number): EdgePresentation => {
   const direction = getEdgeDirection(data);
   const arrowMarker = getArrowMarker(color);
 

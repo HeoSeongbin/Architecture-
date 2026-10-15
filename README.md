@@ -32,6 +32,9 @@ URL 하나로 공유할 수 있는 서버리스 아키텍처 다이어그램 편
 - PNG 이미지 export 지원
 - 샘플 아키텍처 즉시 로딩
 - URL 복원 실패 시 안전하게 빈 캔버스로 fallback
+- 한국어 기본 UI와 라이트/다크 테마
+- 자산 클릭 추가, 카테고리 접기/펼치기
+- 좁은 화면의 자산/속성 패널 전환과 파일/보기 메뉴
 
 ## 3. 기술 스택
 
@@ -116,8 +119,8 @@ URL 길이를 줄이기 위해 저장용 구조는 짧은 키를 사용합니다
 
 ```ts
 interface MinifiedNode {
-  i: string;        // node id
-  t: string;        // node type
+  i: string; // node id
+  t: string; // node type
   p: [number, number]; // position [x, y]
   d: ArchitectureNodeData; // node data
 }
@@ -209,6 +212,8 @@ Sidebar 기능:
 - 자산 검색/필터
 - 카테고리별 그룹 표시
 - HTML5 drag and drop으로 React Flow 캔버스에 노드 생성
+- 클릭 또는 키보드 Enter로 현재 캔버스 중앙에 노드 추가
+- 한국어 분류 검색, 분류별 접기/펼치기, 아이콘 미리보기와 설명 툴팁
 
 구현 위치:
 
@@ -250,8 +255,8 @@ Sidebar 기능:
 
 노드 연결 handle:
 
-- 상단/좌측: target
-- 우측/하단: source
+- 상/우/하/좌 네 면에 연결 handle 제공
+- React Flow `ConnectionMode.Loose`로 각 면에서 연결 가능
 
 구현 위치:
 
@@ -284,6 +289,8 @@ Delete는 해당 노드를 삭제하며, 연결된 엣지도 함께 제거합니
 수정 가능 항목:
 
 - Edge label
+- 방향(정방향/역방향/양방향), 라벨 표시 모드와 회전 방향
+- 연결 면 자동/수동 선택, 라벨 X/Y 위치
 
 지원 액션:
 
@@ -332,7 +339,7 @@ Zustand store에 자체 history stack을 구현했습니다.
 
 ### 4.9 Sample Diagram
 
-`Sample` 버튼을 누르면 기본 샘플 아키텍처가 로드됩니다.
+`샘플` 버튼을 누르면 기본 샘플 아키텍처가 로드됩니다. 900px 이하에서는 `배치` 메뉴에 있습니다.
 
 샘플 구성:
 
@@ -361,15 +368,15 @@ Zustand store에 자체 history stack을 구현했습니다.
 
 ### 4.10 Auto Layout
 
-`Layout` 버튼은 현재 연결 방향을 기준으로 노드를 좌에서 우로 자동 배치합니다.
+`자동 정렬` 버튼은 ELK.js layered 엔진으로 최상위 일반 노드를 좌에서 우로 자동 배치합니다.
 
 동작 방식:
 
-- incoming edge가 없는 노드를 시작점으로 판단
-- edge 방향을 따라 depth 계산
-- depth별 column 배치
-- 같은 column 내에서는 row 간격을 두고 배치
-- 순환 그래프에서 무한 루프가 발생하지 않도록 depth cap 적용
+- ELK layered 알고리즘과 직교 경로 사용
+- 실패 시 depth와 자산 의미 계층을 기준으로 자체 열 배치 fallback
+- 순환 그래프 depth cap 적용
+- 그룹과 그룹 내부 노드는 자동 배치 대상에서 제외
+- 정렬 도중 그래프가 변경되면 오래된 결과를 폐기
 
 구현 위치:
 
@@ -379,7 +386,7 @@ Zustand store에 자체 history stack을 구현했습니다.
 
 #### JSON Export
 
-`JSON` 버튼을 누르면 현재 그래프 상태를 `.json` 파일로 다운로드합니다.
+`파일 → JSON 내보내기`에서 현재 그래프 상태를 `.json` 파일로 다운로드합니다.
 
 파일명 형식:
 
@@ -398,7 +405,7 @@ architecture-diagram-YYYY-MM-DD.json
 
 #### JSON Import
 
-`Import` 버튼으로 `.json` 파일을 선택하면 다이어그램을 복원합니다.
+`파일 → JSON 가져오기`에서 `.json` 파일을 선택하면 다이어그램을 복원합니다.
 
 Import 시 검증:
 
@@ -406,8 +413,10 @@ Import 시 검증:
 - edges 배열 존재 여부
 - node id / position / data 필드 유효성
 - edge source / target이 실제 node id를 참조하는지 확인
+- 중복/빈 ID, 비정상 좌표, 존재하지 않는 부모와 부모 순환 거부
+- 일부 항목이 잘못되어도 전체 Import를 거부하여 조용한 데이터 누락 방지
 
-잘못된 JSON이면 버튼 상태가 `Invalid JSON`으로 표시됩니다.
+잘못된 JSON이면 하단에 오류 안내가 표시되며 현재 작업을 유지합니다.
 
 구현 위치:
 
@@ -416,7 +425,7 @@ Import 시 검증:
 
 ### 4.12 PNG Export
 
-`PNG` 버튼을 누르면 현재 React Flow 캔버스를 PNG 이미지로 다운로드합니다.
+`파일 → PNG 내보내기`에서 현재 React Flow 캔버스를 PNG 이미지로 다운로드합니다.
 
 파일명 형식:
 
@@ -428,7 +437,7 @@ architecture-diagram-YYYY-MM-DD.png
 
 - `html-to-image`의 `toPng` 사용
 - React Flow panel UI는 이미지에서 제외
-- 배경색은 `#f8fafc`
+- 배경색은 라이트 `#f8fafc`, 다크 `#111827`
 - pixel ratio는 2로 설정
 
 주의:
@@ -453,17 +462,13 @@ architecture-diagram-YYYY-MM-DD.png
 +--------------------+--------------------------------+----------------------+
 ```
 
-상단 Header에는 다음 버튼이 있습니다.
+상단 Toolbar에는 실행 취소/다시 실행, 샘플/자동 정렬, 링크 복사, 테마 전환이 있습니다. `파일` 메뉴에서 새 다이어그램·JSON 입출력·PNG·캔버스 비우기를, `보기` 메뉴에서 전체 보기·확대/축소·격자·연결선 라벨 표시를 조절합니다. 새 다이어그램과 캔버스 비우기는 그래프를 비우며 이전 작업은 실행 취소로 복원할 수 있습니다.
 
-- Undo
-- Redo
-- Sample
-- Copy link
-- Layout
-- JSON
-- Import
-- Clear
-- PNG
+900px 이하에서는 자산/속성 패널 버튼으로 한 패널씩 열고, 샘플/자동 정렬은 `배치` 메뉴에서 실행합니다. 패널 닫기 버튼이나 Escape로 닫을 수 있습니다. 자산을 클릭하여 추가하면 패널이 닫힙니다. 테마 설정은 브라우저에 기억되며 다이어그램의 URL/JSON 데이터에 포함되지 않습니다. 초기 테마는 시스템 설정을 따릅니다.
+
+화면 예시: [라이트](docs/screenshots/phase2-light.jpg), [다크](docs/screenshots/phase2-dark.jpg), [모바일](docs/screenshots/phase2-mobile.jpg).
+
+![다크 테마 편집기](docs/screenshots/phase2-dark.jpg)
 
 ## 6. 주요 폴더 / 파일 구조
 
@@ -619,18 +624,18 @@ React Flow custom node renderer입니다.
 - Node.js
 - npm
 
-현재 개발 환경에서는 Node.js 24.x와 npm 11.x에서 빌드 확인되었습니다.
+현재 개발 환경에서는 Node.js 24.x에서 빌드 및 테스트를 확인했습니다. 의존성 버전은 package.json과 package-lock.json에 고정합니다.
 
 ### 설치
 
 ```bash
-npm install
+npm ci
 ```
 
 Windows PowerShell에서 `npm.ps1` 실행 정책 문제가 발생하면 다음처럼 실행할 수 있습니다.
 
 ```bash
-npm.cmd install
+npm.cmd ci
 ```
 
 ### 개발 서버 실행
@@ -745,14 +750,43 @@ PNG export:
 
 현재 구현은 MVP를 넘어 실제 사용 가능한 편집기 수준의 기능을 포함하지만, 다음 개선 여지가 있습니다.
 
-- 더 정교한 auto layout 알고리즘
-- 그룹/서브넷/영역 박스 기능
-- 노드 크기 조절
+- 그룹과 다양한 크기를 고려한 자동 정렬 및 방향 선택
+- 기존 그룹/영역 박스의 포함 관리와 히스토리 보완
+- 일반 노드 크기 조절 (그룹 드래그 크기 조절은 구현됨)
 - 엣지 스타일 선택
 - 더 많은 클라우드 리소스 아이콘
 - 다중 선택 후 일괄 편집
 - 키보드 기반 복사/붙여넣기
 - 더 강한 모바일 UI
-- 테스트 코드 추가
+- 브라우저 E2E와 다운로드/대량 그래프 검증 확장
 - GitHub Pages 배포 설정
 
+## 11. 현재 그룹 기능
+
+Sidebar의 Group Card를 드래그하여 영역을 생성하고 선택한 그룹의 크기를 조절할 수 있습니다. 일반 노드를 그룹에 드래그하면 parentId 기반으로 포함되며 그룹 이동 시 함께 이동합니다. 그룹을 삭제하면 내부 노드는 절대 위치를 유지한 채 남습니다. 그룹 제목/설명/색은 Inspector로 편집하며 크기와 포함 관계는 JSON/URL에 저장됩니다.
+
+## 12. 개발 검증
+
+```bash
+npm run lint
+npm test
+npm run typecheck
+npm run build
+npm run format:check
+```
+
+`npm run check`는 lint → test → build를 실행합니다. `npm run test:watch`는 테스트 감시, `npm run format`은 Prettier 정렬입니다. Vitest와 Testing Library로 Store, URL/JSON 왕복 및 구형 형식, Inspector/Sidebar, App 복원/단축키/URL 동기화를 검증합니다. 실제 브라우저의 포인터 조작과 파일 다운로드는 별도 검증 대상입니다.
+
+## 13. 브라우저, 배포 및 알려진 제한
+
+대상 브라우저는 최신 데스크톱 Chrome/Edge/Firefox/Safari입니다. Codex 내장 Chromium 브라우저에서 1280×720 및 390×844 화면, 클릭 추가·선택·속성 편집·테마·전체 보기·URL 새로고침 복원을 확인했습니다. 실제 휴대폰 터치 조작, 파일 다운로드와 다른 브라우저는 별도 검증 대상입니다.
+
+- PNG는 현재 보이는 캔버스를 저장하므로 화면 밖 요소가 잘릴 수 있습니다. 전체 영역/배율/투명 옵션과 SVG/PDF는 후속 작업입니다.
+- URL은 브라우저 주소에 저장되며 서버 백업이 아닙니다. 큰 그래프는 JSON으로 백업하세요. 현재 압축 해제 크기 상한과 외부 hash 변경 처리는 미구현입니다.
+- Import와 Clear/Sample은 현재 그래프를 교체합니다. 필요하면 먼저 JSON으로 백업하세요. 교체 후 Undo도 가능합니다.
+- 일반 노드 크기 조절, 복사/붙여넣기, 일괄 편집, 즐겨찾기와 최근 사용 자산은 후속 개발 대상입니다.
+- 빌드의 큰 번들 경고와 Tailwind 3 도구 체인의 의존성 보안 경고가 남아 있습니다. 상세 내용은 docs/PROGRESS.md를 참조하세요.
+
+Vite의 GitHub Pages base는 `/Architecture-/`로 설정되어 있으며 `.github/workflows/deploy.yml`에 기존 build/deploy workflow가 있습니다. 현재 workflow에는 lint/test gate가 없습니다. 실제 배포 주소/Pages 활성화 여부는 확인되지 않았고, workflow 개선과 배포 환경 검증은 Phase 7에서 진행합니다.
+
+관리 문서: [요구사항](PROJECT.md), [작업 규칙](AGENTS.md), [진행 상태](docs/PROGRESS.md), [기술 결정](docs/DECISIONS.md).

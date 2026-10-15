@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { Copy, Download, FileDown, Grid3X3, Link2, Network, Redo2, Trash2, Undo2, Upload, Wand2 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { ReactFlowProvider } from '@xyflow/react';
 import { ArchitectureCanvas } from './components/ArchitectureCanvas';
@@ -9,22 +8,26 @@ import { sampleGraph } from './data/sampleGraph';
 import { useGraphStore } from './store/useGraphStore';
 import { normalizeImportedGraph, toExportableGraph } from './utils/jsonUtils';
 import { decodeStateFromUrl, encodeStateToUrl } from './utils/urlUtils';
-import type { ArchitectureEdgeData } from './types/graph';
-
-const labelModeOptions: Array<{ value: NonNullable<ArchitectureEdgeData['labelMode']>; label: string }> = [
-  { value: 'hidden', label: 'Hide labels' },
-  { value: 'protocol', label: 'Protocol' },
-  { value: 'compact', label: 'Compact' },
-  { value: 'full', label: 'Full' },
-];
+import { EditorToolbar } from './components/EditorToolbar';
+import { useEditorTheme } from './hooks/useEditorTheme';
+import { useNarrowScreen } from './hooks/useNarrowScreen';
 
 export default function App() {
   const [isHydrated, setIsHydrated] = useState(false);
   const [urlError, setUrlError] = useState(false);
-  const [copyLabel, setCopyLabel] = useState('Copy link');
-  const [importLabel, setImportLabel] = useState('Import');
-  const [jsonLabel, setJsonLabel] = useState('JSON');
-  const [imageLabel, setImageLabel] = useState('PNG');
+  const [feedback, setFeedback] = useState({
+    text: '변경 내용은 URL에 자동 반영됩니다. 파일 백업은 JSON 내보내기를 이용하세요.',
+    error: false,
+  });
+  const [busy, setBusy] = useState(false);
+  const [activePanel, setActivePanel] = useState<'assets' | 'inspector' | null>(null);
+  const { theme, toggleTheme } = useEditorTheme();
+  const narrow = useNarrowScreen();
+  const panelOpener = useRef<HTMLElement | null>(null);
+  const notify = (text: string, error = false) => {
+    setUrlError(false);
+    setFeedback({ text, error });
+  };
   const [showCanvasGrid, setShowCanvasGrid] = useState(true);
   const replaceTimer = useRef<number | undefined>(undefined);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -70,13 +73,21 @@ export default function App() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        document.querySelectorAll<HTMLDetailsElement>('.tool-menu[open]').forEach((menu) => {
+          menu.open = false;
+          menu.querySelector('summary')?.focus();
+        });
+        setActivePanel(null);
+        if (narrow && activePanel) panelOpener.current?.focus();
+      }
       const isModifierPressed = event.ctrlKey || event.metaKey;
       const key = event.key.toLowerCase();
 
       if (!isModifierPressed || (key !== 'z' && key !== 'y')) return;
 
-      const target = event.target as HTMLElement | null;
-      const isEditing = target?.matches('input, textarea, [contenteditable="true"]');
+      const target = event.target;
+      const isEditing = target instanceof Element && target.closest('input, textarea, [contenteditable]:not([contenteditable="false"])');
       if (isEditing) return;
 
       if (key === 'z' && event.shiftKey) {
@@ -97,16 +108,18 @@ export default function App() {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, [narrow, activePanel]);
 
   const clearCanvas = () => {
     useGraphStore.getState().replaceGraph({ nodes: [], edges: [] });
     setUrlError(false);
+    notify('캔버스를 비웠습니다. 실행 취소로 이전 작업을 복원할 수 있습니다.');
   };
 
   const loadSample = () => {
     useGraphStore.getState().replaceGraph(sampleGraph);
     setUrlError(false);
+    notify('샘플을 불러왔습니다. 기존 작업은 실행 취소로 복원할 수 있습니다.');
   };
 
   const copyShareLink = async () => {
@@ -121,18 +134,21 @@ export default function App() {
         textarea.value = shareUrl;
         textarea.style.position = 'fixed';
         textarea.style.opacity = '0';
+        const focused = document.activeElement;
         document.body.append(textarea);
         textarea.select();
-        document.execCommand('copy');
-        textarea.remove();
+        try {
+          if (!document.execCommand('copy')) throw new Error('Copy failed');
+        } finally {
+          textarea.remove();
+          if (focused instanceof HTMLElement) focused.focus();
+        }
       }
 
-      setCopyLabel('Copied');
+      notify('공유 링크를 복사했습니다.');
     } catch {
-      setCopyLabel('Copy failed');
+      notify('링크를 복사하지 못했습니다. 주소를 직접 복사하거나 JSON을 내보내세요.', true);
     }
-
-    window.setTimeout(() => setCopyLabel('Copy link'), 1400);
   };
 
   const triggerDownload = (href: string, filename: string, revokeUrl = false) => {
@@ -157,12 +173,10 @@ export default function App() {
       const filename = `architecture-diagram-${new Date().toISOString().slice(0, 10)}.json`;
       const dataUrl = `data:application/json;charset=utf-8,${encodeURIComponent(json)}`;
       triggerDownload(dataUrl, filename);
-      setJsonLabel('Saved');
+      notify('JSON 다운로드를 요청했습니다. 브라우저 다운로드 목록을 확인하세요.');
     } catch {
-      setJsonLabel('Failed');
+      notify('JSON을 내보내지 못했습니다.', true);
     }
-
-    window.setTimeout(() => setJsonLabel('JSON'), 1600);
   };
 
   const importJson = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -176,140 +190,136 @@ export default function App() {
       if (!graph) throw new Error('Invalid graph');
 
       useGraphStore.getState().replaceGraph(graph);
-      setImportLabel('Imported');
+      notify('JSON을 가져왔습니다. 이전 작업은 실행 취소로 복원할 수 있습니다.');
       setUrlError(false);
     } catch {
-      setImportLabel('Invalid JSON');
+      notify('올바른 다이어그램 JSON이 아닙니다. 현재 작업은 유지됩니다.', true);
     }
-
-    window.setTimeout(() => setImportLabel('Import'), 1600);
   };
 
   const downloadImage = async () => {
+    setBusy(true);
     try {
       const flowPane = document.querySelector<HTMLElement>('.react-flow');
       if (!flowPane) throw new Error('React Flow pane not found');
 
-      setImageLabel('Saving');
+      notify('현재 화면을 PNG로 만드는 중입니다…');
       const dataUrl = await toPng(flowPane, {
-        backgroundColor: '#f8fafc',
+        backgroundColor: theme === 'dark' ? '#111827' : '#f8fafc',
         cacheBust: true,
         pixelRatio: 2,
         filter: (node) => !(node instanceof HTMLElement && node.classList.contains('react-flow__panel')),
       });
 
       triggerDownload(dataUrl, `architecture-diagram-${new Date().toISOString().slice(0, 10)}.png`);
-      setImageLabel('Saved');
+      notify('PNG 다운로드를 요청했습니다. 현재 화면 밖의 요소는 포함되지 않습니다.');
     } catch {
-      setImageLabel('Failed');
+      notify('PNG를 만들지 못했습니다. 다시 시도하거나 JSON으로 백업하세요.', true);
+    } finally {
+      setBusy(false);
     }
-
-    window.setTimeout(() => setImageLabel('PNG'), 1800);
   };
 
+  const togglePanel = (panel: 'assets' | 'inspector') => {
+    panelOpener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setActivePanel((value) => (value === panel ? null : panel));
+  };
+  const closePanel = () => {
+    setActivePanel(null);
+    panelOpener.current?.focus();
+  };
+  const layout = async () => {
+    setBusy(true);
+    try {
+      await autoLayout();
+      notify('자동 정렬 요청을 처리했습니다. 전체 보기로 배치를 확인하세요.');
+    } catch {
+      notify('자동 정렬을 완료하지 못했습니다.', true);
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
     <ReactFlowProvider>
-      <div className="flex h-screen w-screen overflow-hidden bg-slate-100 text-slate-900">
-        <Sidebar />
-        <main className="flex min-w-0 flex-1 flex-col">
-          <header className="flex min-h-14 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-2 shadow-sm">
-            <input
-              accept="application/json,.json"
-              className="hidden"
-              onChange={importJson}
-              ref={fileInputRef}
-              type="file"
-            />
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="grid h-8 w-8 place-items-center rounded bg-slate-900 text-white">
-                <Link2 size={17} aria-hidden />
-              </div>
-              <div className="min-w-0">
-                <h1 className="truncate text-sm font-semibold">Serverless Architecture Diagram Editor</h1>
-                <p className="truncate text-xs text-slate-500">State is compressed into the URL hash</p>
-              </div>
-            </div>
-
-            {urlError && (
-              <div className="mx-4 hidden rounded border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-800 md:block">
-                Corrupted URL state was ignored.
-              </div>
+      <div className="editor-shell" data-theme={theme}>
+        <a
+          className="skip-link"
+          href="#diagram-workspace"
+          onClick={(event) => {
+            event.preventDefault();
+            document.getElementById('diagram-workspace')?.focus();
+          }}
+        >
+          캔버스로 건너뛰기
+        </a>
+        <EditorToolbar
+          canUndo={canUndo}
+          canRedo={canRedo}
+          undo={undo}
+          redo={redo}
+          clear={clearCanvas}
+          sample={loadSample}
+          layout={() => void layout()}
+          copy={() => void copyShareLink()}
+          importJson={() => fileInputRef.current?.click()}
+          exportJson={exportJson}
+          exportPng={() => void downloadImage()}
+          theme={theme}
+          toggleTheme={toggleTheme}
+          grid={showCanvasGrid}
+          toggleGrid={() => setShowCanvasGrid((value) => !value)}
+          labelMode={globalLabelMode}
+          setLabelMode={setAllEdgeLabelModes}
+          busy={busy}
+          narrow={narrow}
+          activePanel={activePanel}
+          togglePanel={togglePanel}
+        />
+        <input
+          aria-label="다이어그램 JSON 파일"
+          accept="application/json,.json"
+          className="hidden"
+          onChange={importJson}
+          ref={fileInputRef}
+          type="file"
+        />
+        <div className="editor-body">
+          <div id="assets-panel" className="editor-panel assets-panel" hidden={narrow && activePanel !== 'assets'}>
+            {narrow && (
+              <button className="panel-close secondary-button" onClick={closePanel}>
+                자산 패널 닫기
+              </button>
             )}
-
-            <div className="header-actions flex min-w-0 flex-wrap items-center justify-end gap-2">
-              <div className="hidden items-center gap-2 rounded border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-500 lg:flex">
-                <span>{nodes.length} nodes</span>
-                <span className="h-3 w-px bg-slate-300" />
-                <span>{edges.length} edges</span>
-                <span className="h-3 w-px bg-slate-300" />
-                <span>{urlSize.toLocaleString()} hash chars</span>
-              </div>
-              <button className="icon-button" disabled={!canUndo} type="button" title="Undo" onClick={undo}>
-                <Undo2 size={17} aria-hidden />
+            <Sidebar onAdded={narrow ? closePanel : undefined} />
+          </div>
+          <main id="diagram-workspace" className="editor-workspace" tabIndex={-1} aria-label="다이어그램 캔버스">
+            {isHydrated ? (
+              <ArchitectureCanvas showGrid={showCanvasGrid} theme={theme} />
+            ) : (
+              <div className="canvas-loading">다이어그램을 불러오는 중…</div>
+            )}
+          </main>
+          <div id="inspector-panel" className="editor-panel inspector-panel" hidden={narrow && activePanel !== 'inspector'}>
+            {narrow && (
+              <button className="panel-close secondary-button" onClick={closePanel}>
+                속성 패널 닫기
               </button>
-              <button className="icon-button" disabled={!canRedo} type="button" title="Redo" onClick={redo}>
-                <Redo2 size={17} aria-hidden />
-              </button>
-              <button className="secondary-button" type="button" onClick={loadSample}>
-                <Network size={17} aria-hidden />
-                <span>Sample</span>
-              </button>
-              <button className="secondary-button" type="button" onClick={copyShareLink}>
-                <Copy size={17} aria-hidden />
-                <span>{copyLabel}</span>
-              </button>
-              <button className="secondary-button" type="button" onClick={autoLayout}>
-                <Wand2 size={17} aria-hidden />
-                <span className="optional-button-text">Layout</span>
-              </button>
-              <button
-                className={`secondary-button ${showCanvasGrid ? 'border-slate-900 bg-slate-100 text-slate-950' : ''}`}
-                type="button"
-                onClick={() => setShowCanvasGrid((value) => !value)}
-                title={showCanvasGrid ? 'Hide canvas dots' : 'Show canvas dots'}
-              >
-                <Grid3X3 size={17} aria-hidden />
-                <span className="optional-button-text">{showCanvasGrid ? 'Grid on' : 'Grid off'}</span>
-              </button>
-              <select
-                aria-label="Edge label mode"
-                className="h-9 rounded border border-slate-200 bg-white px-2 text-sm font-medium text-slate-700 outline-none transition hover:border-slate-300 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
-                onChange={(event) => setAllEdgeLabelModes(event.target.value as NonNullable<ArchitectureEdgeData['labelMode']>)}
-                value={globalLabelMode}
-              >
-                {globalLabelMode === 'mixed' ? <option value="mixed">Mixed labels</option> : null}
-                {labelModeOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <button className="secondary-button" type="button" onClick={exportJson}>
-                <FileDown size={17} aria-hidden />
-                <span>{jsonLabel}</span>
-              </button>
-              <button className="secondary-button" type="button" onClick={() => fileInputRef.current?.click()}>
-                <Upload size={17} aria-hidden />
-                <span className="optional-button-text">{importLabel}</span>
-              </button>
-              <button className="icon-button" type="button" title="Clear canvas" onClick={clearCanvas}>
-                <Trash2 size={17} aria-hidden />
-              </button>
-              <button className="primary-button" type="button" onClick={downloadImage}>
-                <Download size={17} aria-hidden />
-                <span>{imageLabel}</span>
-              </button>
-            </div>
-          </header>
-          {isHydrated ? (
-            <ArchitectureCanvas showGrid={showCanvasGrid} />
+            )}
+            <Inspector />
+          </div>
+        </div>
+        <footer className="editor-footer">
+          {urlError ? (
+            <p role="alert">공유 URL을 복원하지 못했습니다. 링크를 확인하거나 JSON 백업을 가져오세요.</p>
           ) : (
-            <div className="grid min-h-0 flex-1 place-items-center bg-slate-50 text-sm text-slate-500">
-              Loading diagram
-            </div>
+            <p role={feedback.error ? 'alert' : 'status'} className={feedback.error ? 'feedback-error' : ''}>
+              {feedback.text}
+            </p>
           )}
-        </main>
-        <Inspector />
+          <span className="diagram-stats">
+            노드 {nodes.length} · 연결 {edges.length} · URL {urlSize.toLocaleString()}자
+          </span>
+        </footer>
       </div>
     </ReactFlowProvider>
   );

@@ -24,4 +24,5 @@ Thumbs.db
 # TypeScript / Vite cache
 *.tsbuildinfo
 node_modules/.tmp/
+coverage/
 
