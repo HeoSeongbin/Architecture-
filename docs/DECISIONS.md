@@ -162,6 +162,7 @@
 - PR은 configure-pages/Pages artifact 업로드/deploy를 실행하지 않는다. contents:read와 Pages 구성 조회용 pages:read는 build, pages:write/id-token:write는 deploy job에만 둔다. 기존 배포 권한을 확대하지 않는다. production 실행은 같은 concurrency 그룹, PR은 번호별 그룹을 사용한다.
 - Node24와 기존 Actions major를 유지한다. 무관한 도구 업그레이드/전체 재작성은 하지 않는다. 새 workflow의 실제 원격 성공과 기존 배포본 브라우저 검증은 각각 기록한다.
 - URL/JSON v1/압축/base는 변경하지 않는다. 정상 build는 benchmark entry를 포함하지 않는다.
+- 첫 run38854733158에서 npm11.19가 기존 lock의 @emnapi/core/runtime root optional peer 누락으로 ci를 거부했다. 로컬 npm11.6의 성공으로 원격 성공을 추정하지 않는다. 동일 npm으로 lock을 보완하고 기존 고정/전이 패키지 버전이 바뀌지 않음을 비교했다. 버전 누락을 해결하며 npm install로 CI를 되돌리지 않는다.
 
 ## ADR-018 — JSON 파일 저장 재시도와 수명 (2026-10-16)
 

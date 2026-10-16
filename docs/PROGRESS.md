@@ -329,6 +329,10 @@ Phase 3·4는 `38a99a5`로 커밋하여 origin/main에 push했다. Phase 5는 �
 
 새 workflow와 JSON 보완의 원격 반영/Actions 실행 및 배포 smoke가 남아 있다. 이 섹션의 대기 상태를 실제 검증 후 갱신한다. 다른 브라우저/실제 터치/스크린리더/간헐적 PNG 지연과 기존 chunk·도구 보안 경고는 계속 공개한다.
 
+### 첫 원격 검사 실패와 수정
+
+f59abdf를 push한 run38854733158은 npm ci 단계에서 실패했고 배포는 실행하지 않았다. 로그의 npm11.19.0은 lock의 root optional peer @emnapi/core/runtime1.11.3 누락을 EUSAGE로 거부했다. 로컬 npm11.6.2의 별도 clean install은 통과하여 버전 차이를 확인했다. npm11.19로 lock만 재생성해 누락 항목과 peer metadata를 보완했고 기존 패키지 버전은 모두 유지되는지 비교했다. 임시 폴더에서 새 npm의 clean install을 확인한 뒤 원격 검사를 다시 진행한다. install로 CI gate를 우회하지 않는다.
+
 ## 전체 단계
 
 Phase 0 분석/문서 완료 → Phase 1 안정화/검증 기반 완료 → Phase 2 UI 완료 → Phase 3 편집 확장 완료 → Phase 4 정렬/데이터 완료 → Phase 5 자산/출력·명시 범위 검증 완료 → Phase 6 측정/최적화·명시 범위 검증 완료(전체 PNG 시간 목표 일부 미달) → Phase 7 문서/배포 검증 대기.

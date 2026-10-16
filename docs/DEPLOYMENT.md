@@ -38,6 +38,7 @@ Vite base `/Architecture-/`와 URL hash 공유를 유지한다. Pages는 저장�
 - 흰 화면/asset404: base와 `/Architecture-/assets/` 요청 및 대소문자를 확인한다. hash 라우팅이므로 별도 서버 rewrite를 추가하지 않는다.
 - Worker 오류: asset 경로/HTTP 성공 여부와 브라우저 console을 확인한다. 안전한 fallback이 나왔다고 Worker 성공으로 간주하지 않는다.
 - npm ci 실패: package.json/lock 불일치를 점검하고 로컬 검증 후 lock을 함께 변경한다. install로 CI 실패를 숨기지 않는다.
+- npm 버전 차이도 확인한다. Phase7 첫 실행의 npm11.19는 기존 lock의 optional peer 누락을 발견했다. 같은 npm으로 lock을 보완하고 직접/기존 전이 버전 변화와 clean install을 확인했다.
 - Pages 권한 오류: Actions run의 build/deploy job 및 Pages Source/환경 승인을 저장소 관리자가 확인한다.
 - 회귀 배포: 정상 커밋을 확인하여 새 revert 커밋으로 복구하거나 검증된 커밋을 다시 배포한다. force push나 기존 사용자 변경 삭제로 복구하지 않는다.
 
