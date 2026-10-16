@@ -24,13 +24,14 @@ export function absolutePosition(node: ArchitectureNode, nodes: ArchitectureNode
   return position;
 }
 export function orderParentsFirst(nodes: ArchitectureNode[]) {
+  const byId = new Map(nodes.map((node) => [node.id, node]));
   const result: ArchitectureNode[] = [];
   const visited = new Set<string>();
   const visiting = new Set<string>();
   const visit = (node: ArchitectureNode) => {
     if (visited.has(node.id) || visiting.has(node.id)) return;
     visiting.add(node.id);
-    const parent = nodes.find((item) => item.id === node.parentId);
+    const parent = node.parentId ? byId.get(node.parentId) : undefined;
     if (parent) visit(parent);
     visited.add(node.id);
     result.push(node);
@@ -58,6 +59,7 @@ export function reparentNodes(nodes: ArchitectureNode[], ids: Set<string>, paren
   });
 }
 export function removeElements(graph: GraphState, nodeIds: Set<string>, edgeIds = new Set<string>()): GraphState {
+  if (!nodeIds.size && !edgeIds.size) return graph;
   const nodes = graph.nodes
     .filter((node) => !nodeIds.has(node.id))
     .map((node) => {

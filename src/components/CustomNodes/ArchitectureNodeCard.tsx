@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Handle, NodeResizer, Position, type NodeProps } from '@xyflow/react';
 import { Server } from 'lucide-react';
 import { assetIcons, categoryLabels } from '../../utils/assetPresentation';
@@ -6,7 +7,7 @@ import { useGraphStore } from '../../store/useGraphStore';
 
 const connectionHandles = [Position.Top, Position.Right, Position.Bottom, Position.Left];
 
-export function ArchitectureNodeCard({ data, selected }: NodeProps<ArchitectureNode>) {
+export const ArchitectureNodeCard = memo(function ArchitectureNodeCard({ data, selected }: NodeProps<ArchitectureNode>) {
   const Icon = assetIcons[data.kind] ?? Server;
 
   return (
@@ -42,4 +43,4 @@ export function ArchitectureNodeCard({ data, selected }: NodeProps<ArchitectureN
       {data.note ? <div className="mt-2 line-clamp-2 text-xs text-slate-500">{data.note}</div> : null}
     </div>
   );
-}
+});

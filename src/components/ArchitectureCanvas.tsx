@@ -1,4 +1,6 @@
-import { useCallback, useMemo } from 'react';
+import { getAsset } from '../data/assets';
+import { useAssetPreferences } from '../store/useAssetPreferences';
+import { useCallback, useMemo, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import {
   Background,
@@ -77,14 +79,31 @@ export function ArchitectureCanvas({ showGrid, theme }: ArchitectureCanvasProps)
   const onConnect = useGraphStore((state) => state.onConnect);
   const selectNode = useGraphStore((state) => state.selectNode);
   const selectEdge = useGraphStore((state) => state.selectEdge);
+  const nodeCache = useRef(new WeakMap<ArchitectureNode, ArchitectureNode>());
+  const accessibleNodes = useMemo(
+    () =>
+      nodes.map((node) => {
+        const cached = nodeCache.current.get(node);
+        if (cached) return cached;
+        const named = { ...node, ariaLabel: `${node.data.label}, ${node.type === 'groupNode' ? '그룹' : '노드'}` };
+        nodeCache.current.set(node, named);
+        return named;
+      }),
+    [nodes],
+  );
   const visibleEdges = useMemo<ArchitectureEdgeType[]>(
     () =>
       edges.map((edge) => {
         const isConnectedToSelectedNode = Boolean(selectedNodeId && (edge.source === selectedNodeId || edge.target === selectedNodeId));
-        if (!isConnectedToSelectedNode) return edge;
+        const presentedEdge = {
+          ...edge,
+          ariaLabel: `${edge.source}에서 ${edge.target}로 연결${edge.data?.label ? `: ${edge.data.label}` : ''}`,
+          ...(edges.length > 200 && edge.animated ? { animated: false } : {}),
+        };
+        if (!isConnectedToSelectedNode) return presentedEdge;
 
         return {
-          ...edge,
+          ...presentedEdge,
           style: {
             ...edge.style,
             filter: 'drop-shadow(0 0 5px rgba(15, 23, 42, 0.28))',
@@ -107,7 +126,16 @@ export function ArchitectureCanvas({ showGrid, theme }: ArchitectureCanvasProps)
       const rawAsset = event.dataTransfer.getData('application/reactflow');
       if (!rawAsset) return;
 
-      const asset = JSON.parse(rawAsset) as ArchitectureNodeData;
+      let kind: unknown;
+      try {
+        const value: unknown = JSON.parse(rawAsset);
+        kind = typeof value === 'object' && value !== null && 'kind' in value ? value.kind : undefined;
+      } catch {
+        return;
+      }
+      const template = getAsset(kind);
+      if (!template) return;
+      const asset = { ...template };
       const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
       const isGroup = asset.isGroup || asset.kind === 'group';
       const parentGroup = isGroup ? undefined : findGroupAtPosition(position, nodes);
@@ -123,6 +151,7 @@ export function ArchitectureCanvas({ showGrid, theme }: ArchitectureCanvasProps)
       };
 
       addNode(node);
+      useAssetPreferences.getState().recordUse(asset.kind);
     },
     [addNode, nodes, screenToFlowPosition],
   );
@@ -133,6 +162,13 @@ export function ArchitectureCanvas({ showGrid, theme }: ArchitectureCanvasProps)
         className="architecture-flow"
         colorMode={theme}
         ariaLabelConfig={{
+          'node.a11yDescription.default': 'Enter 또는 Space로 선택하고 방향키로 이동하세요. Delete로 삭제하며 Escape로 선택을 해제합니다.',
+          'node.a11yDescription.keyboardDisabled': 'Enter 또는 Space로 노드를 선택하세요.',
+          'node.a11yDescription.ariaLiveMessage': ({ direction, x, y }) =>
+            `${({ left: '왼쪽', right: '오른쪽', up: '위', down: '아래' } as Record<string, string>)[direction] ?? direction} 방향으로 이동. 현재 위치 ${Math.round(x)}, ${Math.round(y)}`,
+          'edge.a11yDescription.default': 'Enter 또는 Space로 연결선을 선택하고 Delete로 삭제하세요.',
+          'controls.ariaLabel': '캔버스 보기 조절',
+          'handle.ariaLabel': '연결 지점',
           'controls.zoomIn.ariaLabel': '확대',
           'controls.zoomOut.ariaLabel': '축소',
           'controls.fitView.ariaLabel': '전체 보기',
@@ -153,7 +189,7 @@ export function ArchitectureCanvas({ showGrid, theme }: ArchitectureCanvasProps)
         minZoom={0.1}
         fitViewOptions={{ padding: 0.25 }}
         nodeTypes={nodeTypes}
-        nodes={nodes}
+        nodes={accessibleNodes}
         onConnect={onConnect}
         onDragOver={onDragOver}
         onDrop={onDrop}

@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { BaseEdge, EdgeLabelRenderer, Position, getSmoothStepPath, getStraightPath, type EdgeProps } from '@xyflow/react';
 import type { ArchitectureEdge as ArchitectureEdgeType } from '../../types/graph';
 
@@ -58,7 +59,7 @@ const getOffsetRoutePoints = (
   });
 };
 
-export function ArchitectureEdge({
+export const ArchitectureEdge = memo(function ArchitectureEdge({
   id,
   sourceX,
   sourceY,
@@ -122,4 +123,4 @@ export function ArchitectureEdge({
       ) : null}
     </>
   );
-}
+});

@@ -141,4 +141,28 @@ export const architectureAssets: Array<ArchitectureNodeData & { kind: Architectu
     category: 'Network',
     accent: '#f59e0b',
   },
+  // Generic Lucide icons are used; these are product labels, not vendor logo assets.
+  { kind: 'mysql', label: 'MySQL', subtitle: 'Relational database', category: 'Database', accent: '#00758f' },
+  { kind: 'sqlite', label: 'SQLite', subtitle: 'Embedded SQL database', category: 'Database', accent: '#0369a1' },
+  { kind: 'kubernetes', label: 'Kubernetes', subtitle: 'Container orchestration', category: 'Server', accent: '#326ce5' },
+  { kind: 'linux', label: 'Linux', subtitle: 'Linux server', category: 'Server', accent: '#ca8a04' },
+  { kind: 'apigateway', label: 'API Gateway', subtitle: 'API routing and authentication', category: 'Network', accent: '#7c3aed' },
+  { kind: 'kafka', label: 'Apache Kafka', subtitle: 'Distributed event streaming', category: 'Network', accent: '#475569' },
+  { kind: 'fastapi', label: 'FastAPI', subtitle: 'Python API service', category: 'Application', accent: '#05998b' },
+  { kind: 'nextjs', label: 'Next.js', subtitle: 'React web application', category: 'Application', accent: '#334155' },
+  { kind: 'awsec2', label: 'AWS EC2', subtitle: 'Cloud virtual machine', category: 'Cloud', accent: '#ea580c' },
+  { kind: 'awss3', label: 'AWS S3', subtitle: 'Object storage', category: 'Cloud', accent: '#16a34a' },
+  { kind: 'awslambda', label: 'AWS Lambda', subtitle: 'Serverless function', category: 'Cloud', accent: '#d97706' },
+  { kind: 'azurestorage', label: 'Azure Storage', subtitle: 'Cloud object and file storage', category: 'Cloud', accent: '#0284c7' },
 ];
+export const groupAsset: ArchitectureNodeData = {
+  kind: 'group',
+  label: '그룹 영역',
+  subtitle: '노드를 드래그하여 영역에 포함',
+  category: 'Group',
+  accent: '#475569',
+  isGroup: true,
+  note: 'VPC, 서브넷, 서비스 경계 등 논리적 영역을 표시하세요.',
+};
+export const allAssets = [groupAsset, ...architectureAssets];
+export const getAsset = (kind: unknown) => allAssets.find((asset) => asset.kind === kind);

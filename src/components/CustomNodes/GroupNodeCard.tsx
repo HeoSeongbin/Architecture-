@@ -1,9 +1,10 @@
+import { memo } from 'react';
 import { NodeResizer, type NodeProps } from '@xyflow/react';
 import type { CSSProperties } from 'react';
 import type { ArchitectureNode } from '../../types/graph';
 import { useGraphStore } from '../../store/useGraphStore';
 
-export function GroupNodeCard({ data, selected }: NodeProps<ArchitectureNode>) {
+export const GroupNodeCard = memo(function GroupNodeCard({ data, selected }: NodeProps<ArchitectureNode>) {
   return (
     <div className={`group-node ${selected ? 'group-node-selected' : ''}`} style={{ '--node-accent': data.accent } as CSSProperties}>
       <NodeResizer
@@ -26,4 +27,4 @@ export function GroupNodeCard({ data, selected }: NodeProps<ArchitectureNode>) {
       {data.note ? <div className="group-node-note">{data.note}</div> : null}
     </div>
   );
-}
+});

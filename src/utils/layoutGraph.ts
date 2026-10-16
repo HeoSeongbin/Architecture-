@@ -1,4 +1,5 @@
-import ELK from 'elkjs/lib/elk.bundled.js';
+import { layoutEngine, LayoutCancelledError } from './layoutEngine';
+export { layoutEngine } from './layoutEngine';
 import type { ElkNode } from 'elkjs/lib/elk-api';
 import type { GraphState } from '../types/graph';
 import { absolutePosition, isGroup, nodeSize, orderParentsFirst } from './graphEditing';
@@ -9,7 +10,6 @@ export interface LayoutOptions {
   nodeGap: number;
 }
 export const DEFAULT_LAYOUT: LayoutOptions = { direction: 'LR', layerGap: 130, nodeGap: 70 };
-export const layoutEngine = new ELK();
 export async function layoutGraph(graph: GraphState, options: LayoutOptions = DEFAULT_LAYOUT) {
   if (
     !['LR', 'TB', 'RL', 'BT'].includes(options.direction) ||
@@ -53,7 +53,8 @@ export async function layoutGraph(graph: GraphState, options: LayoutOptions = DE
       positions = result.children ?? [];
       if (positions.length !== siblings.length || positions.some((node) => !Number.isFinite(node.x) || !Number.isFinite(node.y)))
         throw new Error('Invalid layout');
-    } catch {
+    } catch (error) {
+      if (error instanceof LayoutCancelledError) throw error;
       fallback = true;
       let cursor = 0;
       const vertical = options.direction === 'TB' || options.direction === 'BT';

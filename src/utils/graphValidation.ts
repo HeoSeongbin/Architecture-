@@ -1,3 +1,4 @@
+import { architectureNodeKinds } from '../types/graph';
 export const DATA_VERSION = 1;
 export const GRAPH_LIMITS = { nodes: 1000, edges: 5000, bytes: 5 * 1024 * 1024, hash: 1024 * 1024, depth: 32, text: 10000 };
 export const URL_WARNING_LENGTH = 8000;
@@ -48,33 +49,7 @@ export function validateGraphInput(value: unknown): asserts value is { nodes: un
     choices(node.type, ['architectureNode', 'groupNode'], `${path}.type`);
     finite(node.position.x, `${path}.x`);
     finite(node.position.y, `${path}.y`);
-    choices(
-      node.data.kind,
-      [
-        'mssql',
-        'oracle',
-        'mariadb',
-        'postgresql',
-        'mongodb',
-        'redis',
-        'docker',
-        'nginx',
-        'wsl',
-        'nodejs',
-        'python',
-        'spring',
-        'aspnet',
-        'react',
-        'aws',
-        'azure',
-        'gcp',
-        'loadbalancer',
-        'firewall',
-        'queue',
-        'group',
-      ],
-      `${path}.kind`,
-    );
+    choices(node.data.kind, [...architectureNodeKinds], `${path}.kind`);
     choices(node.data.category, ['Database', 'Server', 'Application', 'Cloud', 'Network', 'Group'], `${path}.category`);
     for (const field of ['kind', 'category', 'label', 'subtitle']) text(node.data[field], `${path}.${field}`);
     text(node.data.note, `${path}.note`, false);

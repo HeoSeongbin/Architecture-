@@ -4,6 +4,7 @@ import { toExportableGraph } from '../utils/jsonUtils';
 import { decodeStateFromUrl, encodeStateToUrl } from '../utils/urlUtils';
 import { URL_MAX_LENGTH, URL_WARNING_LENGTH } from '../utils/graphValidation';
 import type { GraphState } from '../types/graph';
+import { hasPersistentGraphChange } from '../utils/persistenceChanges';
 
 const signature = (graph: GraphState) => JSON.stringify(toExportableGraph(graph));
 export function useGraphPersistence() {
@@ -59,10 +60,14 @@ export function useGraphPersistence() {
     flushRef.current = write;
     const unsubscribe = useGraphStore.subscribe((state, previous) => {
       if (state.nodes === previous.nodes && state.edges === previous.edges) return;
+      const transforming = state.nodes.some((node) => node.dragging || node.resizing);
+      const finished = previous.nodes.some((node) => node.dragging || node.resizing) && !transforming;
+      if (!transforming && !finished && !hasPersistentGraphChange(state, previous)) return;
       window.clearTimeout(timer);
-      if (state.nodes.some((node) => node.dragging || node.resizing)) return;
-      if (signature(state) === lastSignature) return;
-      timer = window.setTimeout(write, 400);
+      if (transforming) return;
+      timer = window.setTimeout(() => {
+        if (signature(useGraphStore.getState()) !== lastSignature) write();
+      }, 400);
     });
     const onHashChange = () => {
       window.clearTimeout(timer);

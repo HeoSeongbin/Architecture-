@@ -1,37 +1,32 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useReactFlow } from '@xyflow/react';
-import { Search } from 'lucide-react';
-import { architectureAssets } from '../data/assets';
+import { Search, Star } from 'lucide-react';
+import { allAssets as assets } from '../data/assets';
+import { useAssetPreferences } from '../store/useAssetPreferences';
 import { useGraphStore } from '../store/useGraphStore';
 import { assetIcons, categoryLabels } from '../utils/assetPresentation';
 import type { ArchitectureNodeData } from '../types/graph';
 
-const groupAsset: ArchitectureNodeData = {
-  kind: 'group',
-  label: '그룹 영역',
-  subtitle: '노드를 드래그하여 영역에 포함',
-  category: 'Group',
-  accent: '#475569',
-  isGroup: true,
-  note: 'VPC, 서브넷, 서비스 경계 등 논리적 영역을 표시하세요.',
-};
-const assets = [groupAsset, ...architectureAssets];
-
 export function Sidebar({ onAdded }: { onAdded?: () => void }) {
+  const preferences = useAssetPreferences();
+  useEffect(() => useAssetPreferences.getState().load(), []);
+  const [view, setView] = useState<'all' | 'favorites' | 'recent'>('all');
   const [query, setQuery] = useState('');
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const { screenToFlowPosition } = useReactFlow();
   const addNode = useGraphStore((state) => state.addNode);
   const filteredAssets = useMemo(
     () =>
-      assets.filter((asset) =>
-        `${asset.label} ${asset.subtitle} ${asset.category} ${categoryLabels[asset.category]}`
-          .toLowerCase()
-          .includes(query.trim().toLowerCase()),
-      ),
-    [query],
+      (view === 'recent' ? preferences.recent.flatMap((kind) => assets.filter((asset) => asset.kind === kind)) : assets)
+        .filter((asset) => view !== 'favorites' || preferences.favorites.includes(asset.kind))
+        .filter((asset) =>
+          `${asset.label} ${asset.subtitle} ${asset.category} ${categoryLabels[asset.category]}`
+            .toLowerCase()
+            .includes(query.trim().toLowerCase()),
+        ),
+    [query, view, preferences.recent, preferences.favorites],
   );
-  const categories = Array.from(new Set(filteredAssets.map((asset) => asset.category)));
+  const categories = view === 'recent' ? ['recent'] : Array.from(new Set(filteredAssets.map((asset) => asset.category)));
   const addAsset = (asset: ArchitectureNodeData) => {
     const bounds = document.getElementById('diagram-workspace')?.getBoundingClientRect();
     if (!bounds) return;
@@ -46,6 +41,7 @@ export function Sidebar({ onAdded }: { onAdded?: () => void }) {
       zIndex: asset.isGroup ? 0 : 1,
       ...(asset.isGroup ? { style: { width: 520, height: 320 } } : {}),
     });
+    preferences.recordUse(asset.kind);
     onAdded?.();
   };
   return (
@@ -66,11 +62,37 @@ export function Sidebar({ onAdded }: { onAdded?: () => void }) {
           />
         </label>
       </div>
+      <div className="asset-library-tabs" role="group" aria-label="자산 목록 필터">
+        {(
+          [
+            ['all', '전체'],
+            ['favorites', '즐겨찾기'],
+            ['recent', '최근 사용'],
+          ] as const
+        ).map(([key, label]) => (
+          <button key={key} className="secondary-button" aria-pressed={view === key} onClick={() => setView(key)}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {preferences.storageUnavailable && (
+        <p className="library-notice" role="status">
+          브라우저 설정 저장이 불가능해 현재 페이지에서만 목록을 유지합니다.
+        </p>
+      )}
       <div className="asset-list">
-        {!filteredAssets.length && <p className="empty-search">검색 결과가 없습니다. 다른 이름이나 분류를 입력하세요.</p>}
+        {!filteredAssets.length && (
+          <p className="empty-search">
+            {view === 'favorites' && !query
+              ? '별 버튼으로 자산을 즐겨찾기에 추가하세요.'
+              : view === 'recent' && !query
+                ? '추가한 자산이 여기에 표시됩니다.'
+                : '검색 결과가 없습니다. 다른 이름이나 분류를 입력하세요.'}
+          </p>
+        )}
         {categories.map((category) => {
           const expanded = query.trim() !== '' || !collapsed.has(category);
-          const items = filteredAssets.filter((asset) => asset.category === category);
+          const items = category === 'recent' ? filteredAssets : filteredAssets.filter((asset) => asset.category === category);
           return (
             <section className="asset-category" key={category}>
               <button
@@ -86,7 +108,7 @@ export function Sidebar({ onAdded }: { onAdded?: () => void }) {
                   })
                 }
               >
-                <span>{categoryLabels[category]}</span>
+                <span>{category === 'recent' ? '최근 사용' : categoryLabels[category]}</span>
                 <span>
                   {items.length} {expanded ? '−' : '+'}
                 </span>
@@ -95,28 +117,37 @@ export function Sidebar({ onAdded }: { onAdded?: () => void }) {
                 {items.map((asset) => {
                   const Icon = assetIcons[asset.kind];
                   return (
-                    <button
-                      className="asset-button"
-                      key={asset.kind}
-                      aria-label={`${asset.label} — ${asset.subtitle}`}
-                      draggable
-                      title={`${asset.label} · ${asset.subtitle} · 클릭 또는 드래그하여 추가`}
-                      onClick={() => addAsset(asset)}
-                      onDragStart={(event) => {
-                        event.dataTransfer.setData('application/reactflow', JSON.stringify(asset));
-                        event.dataTransfer.effectAllowed = 'move';
-                      }}
-                      style={{ '--node-accent': asset.accent } as React.CSSProperties}
-                      type="button"
-                    >
-                      <span className="asset-preview">
-                        <Icon size={20} aria-hidden />
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm font-medium">{asset.label}</span>
-                        <span className="block truncate text-xs text-slate-500">{asset.subtitle}</span>
-                      </span>
-                    </button>
+                    <div className="asset-row" key={asset.kind}>
+                      <button
+                        className="asset-button"
+                        aria-label={`${asset.label} — ${asset.subtitle}`}
+                        draggable
+                        title={`${asset.label} · ${asset.subtitle} · 클릭 또는 드래그하여 추가`}
+                        onClick={() => addAsset(asset)}
+                        onDragStart={(event) => {
+                          event.dataTransfer.setData('application/reactflow', JSON.stringify(asset));
+                          event.dataTransfer.effectAllowed = 'move';
+                        }}
+                        style={{ '--node-accent': asset.accent } as React.CSSProperties}
+                        type="button"
+                      >
+                        <span className="asset-preview">
+                          <Icon size={20} aria-hidden />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-medium">{asset.label}</span>
+                          <span className="block truncate text-xs text-slate-500">{asset.subtitle}</span>
+                        </span>
+                      </button>
+                      <button
+                        className="asset-favorite icon-button"
+                        aria-label={`${asset.label} 즐겨찾기 ${preferences.favorites.includes(asset.kind) ? '해제' : '추가'}`}
+                        aria-pressed={preferences.favorites.includes(asset.kind)}
+                        onClick={() => preferences.toggle(asset.kind)}
+                      >
+                        <Star size={16} fill={preferences.favorites.includes(asset.kind) ? 'currentColor' : 'none'} />
+                      </button>
+                    </div>
                   );
                 })}
               </div>

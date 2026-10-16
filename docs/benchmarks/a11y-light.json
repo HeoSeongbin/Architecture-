@@ -1,0 +1,34 @@
+{
+  "timestamp": "2026-10-16T04:28:29.153Z",
+  "theme": "light",
+  "visibleControls": 121,
+  "unnamed": [],
+  "contrast": [
+    {
+      "foreground": "text",
+      "background": "surface",
+      "ratio": 15.53,
+      "passesNormalText": true
+    },
+    {
+      "foreground": "secondary",
+      "background": "surface",
+      "ratio": 6.2,
+      "passesNormalText": true
+    },
+    {
+      "foreground": "accent",
+      "background": "surface",
+      "ratio": 5.93,
+      "passesNormalText": true
+    },
+    {
+      "foreground": "text",
+      "background": "muted",
+      "ratio": 14.85,
+      "passesNormalText": true
+    }
+  ],
+  "reducedMotion": false,
+  "note": "Focused name/theme contrast audit, not a complete WCAG or screen-reader certification."
+}

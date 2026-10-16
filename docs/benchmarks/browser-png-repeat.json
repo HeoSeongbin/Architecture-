@@ -1,0 +1,29 @@
+{
+  "timestamp": "2026-10-16T04:23:24.065Z",
+  "kind": "targeted-png-repeat",
+  "count": 100,
+  "scenario": "chain",
+  "samples": [
+    {
+      "ms": 1555.9,
+      "width": 2689,
+      "height": 1694,
+      "bytes": 527302,
+      "heap": 36356544
+    },
+    {
+      "ms": 1494.8,
+      "width": 2689,
+      "height": 1694,
+      "bytes": 527302,
+      "heap": 38513497
+    },
+    {
+      "ms": 7156.7,
+      "width": 2689,
+      "height": 1694,
+      "bytes": 527302,
+      "heap": 32540599
+    }
+  ]
+}

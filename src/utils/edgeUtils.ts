@@ -30,17 +30,17 @@ const getNodeFullLabel = (node?: ArchitectureNode) => {
   return node.data.subtitle ? `${node.data.label} (${node.data.subtitle})` : node.data.label;
 };
 
-const getSourceColor = (edge: ArchitectureEdge, nodes: ArchitectureNode[]) =>
-  edge.data?.color ?? nodes.find((node) => node.id === edge.source)?.data.accent ?? DEFAULT_EDGE_COLOR;
+const getSourceColor = (edge: ArchitectureEdge, nodes: ReadonlyMap<string, ArchitectureNode>) =>
+  edge.data?.color ?? nodes.get(edge.source)?.data.accent ?? DEFAULT_EDGE_COLOR;
 
-const getDisplayedLabel = (edge: ArchitectureEdge, nodes: ArchitectureNode[]) => {
+const getDisplayedLabel = (edge: ArchitectureEdge, nodes: ReadonlyMap<string, ArchitectureNode>) => {
   const label = edge.data?.label?.trim() ?? '';
   const labelMode = getEdgeLabelMode(edge.data);
   if (labelMode === 'hidden') return '';
   if (labelMode === 'protocol') return label;
 
-  const sourceNode = nodes.find((node) => node.id === edge.source);
-  const targetNode = nodes.find((node) => node.id === edge.target);
+  const sourceNode = nodes.get(edge.source);
+  const targetNode = nodes.get(edge.target);
   const source = labelMode === 'full' ? getNodeFullLabel(sourceNode) : getNodeLabel(sourceNode);
   const target = labelMode === 'full' ? getNodeFullLabel(targetNode) : getNodeLabel(targetNode);
   const direction = getEdgeDirection(edge.data);
@@ -170,12 +170,13 @@ const getTerminalOffsets = (edges: ArchitectureEdge[]) => {
 };
 
 export const applyEdgePresentation = (nodes: ArchitectureNode[], edges: ArchitectureEdge[]) => {
+  const byId = new Map(nodes.map((node) => [node.id, node]));
   const routeOffsets = getRouteOffsets(edges);
   const labelOffsets = getLabelOffsets(edges);
   const terminalOffsets = getTerminalOffsets(edges);
 
   return edges.map<ArchitectureEdge>((edge) => {
-    const color = getSourceColor(edge, nodes);
+    const color = getSourceColor(edge, byId);
     const data = { direction: 'forward' as const, ...edge.data };
     const labelOffset = labelOffsets.get(edge.id) ?? { x: 0, y: 0 };
     const manualOffset = {
@@ -190,7 +191,7 @@ export const applyEdgePresentation = (nodes: ArchitectureNode[], edges: Architec
         ...data,
         labelOffsetX: labelOffset.x + manualOffset.x,
         labelOffsetY: labelOffset.y + manualOffset.y,
-        renderLabel: getDisplayedLabel({ ...edge, data }, nodes),
+        renderLabel: getDisplayedLabel({ ...edge, data }, byId),
         sourceTerminalOffset: terminalOffset.source,
         targetTerminalOffset: terminalOffset.target,
       },
@@ -201,9 +202,9 @@ export const applyEdgePresentation = (nodes: ArchitectureNode[], edges: Architec
 };
 
 export const presentGraph = (graph: GraphState): GraphState => ({
-  nodes: graph.nodes.map((node) => ({
-    ...node,
-    zIndex: node.type === 'groupNode' || node.data.isGroup || node.data.kind === 'group' ? 0 : 2,
-  })),
+  nodes: graph.nodes.map((node) => {
+    const zIndex = node.type === 'groupNode' || node.data.isGroup || node.data.kind === 'group' ? 0 : 2;
+    return node.zIndex === zIndex ? node : { ...node, zIndex };
+  }),
   edges: applyEdgePresentation(graph.nodes, graph.edges),
 });

@@ -19,7 +19,7 @@ describe('existing editor integration', () => {
     expect(screen.getByText('PostgreSQL')).toBeInTheDocument();
     expect(screen.queryByText('MSSQL')).not.toBeInTheDocument();
     const payload = new Map<string, string>();
-    fireEvent.dragStart(screen.getByRole('button', { name: /PostgreSQL/ }), {
+    fireEvent.dragStart(screen.getByRole('button', { name: 'PostgreSQL — Relational database' }), {
       dataTransfer: { setData: (key: string, value: string) => payload.set(key, value) },
     });
     expect(JSON.parse(payload.get('application/reactflow')!).kind).toBe('postgresql');

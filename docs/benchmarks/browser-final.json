@@ -1,0 +1,625 @@
+{
+  "timestamp": "2026-10-16T04:20:14.724Z",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+  "hardwareConcurrency": 16,
+  "viewport": {
+    "width": 1280,
+    "height": 900,
+    "dpr": 1.0000000149011612
+  },
+  "visibility": "visible",
+  "frameCalibration": {
+    "samples": 10,
+    "medianMs": 4.2,
+    "p95Ms": 4.3,
+    "maxMs": 4.3
+  },
+  "longTasks": {
+    "count": 94,
+    "totalMs": 15063,
+    "maxMs": 2512
+  },
+  "note": "Production isolated harness. Selection/load/layout completion uses two rAF, drag uses 30 store-driven animation frames (not physical pointer). PNG timings include clone/styles/rasterization. memory samples are approximate JS heap, not native canvas or GC-normalized peak. First layout includes cold engine load.",
+  "rows": [
+    {
+      "count": 10,
+      "edges": 9,
+      "scenario": "chain",
+      "loadMs": 32.9,
+      "selection": {
+        "samples": 10,
+        "medianMs": 14.2,
+        "p95Ms": 17.4,
+        "maxMs": 17.4
+      },
+      "dragFrames": {
+        "samples": 30,
+        "medianMs": 4.2,
+        "p95Ms": 8.3,
+        "maxMs": 8.3
+      },
+      "dragCommitMs": 10.7,
+      "timings": {
+        "encode": {
+          "samples": 10,
+          "medianMs": 0.3,
+          "p95Ms": 0.8,
+          "maxMs": 0.8
+        },
+        "decode": {
+          "samples": 10,
+          "medianMs": 0.3,
+          "p95Ms": 0.6,
+          "maxMs": 0.6
+        },
+        "jsonExport": {
+          "samples": 10,
+          "medianMs": 0,
+          "p95Ms": 0.1,
+          "maxMs": 0.1
+        },
+        "jsonImport": {
+          "samples": 10,
+          "medianMs": 0.1,
+          "p95Ms": 0.1,
+          "maxMs": 0.1
+        }
+      },
+      "layout": {
+        "samples": 2,
+        "medianMs": 160.6,
+        "p95Ms": 160.6,
+        "maxMs": 160.6
+      },
+      "exports": [
+        {
+          "scope": "viewport",
+          "ms": 76.1,
+          "width": 732,
+          "height": 792,
+          "bytes": 67742
+        },
+        {
+          "scope": "all",
+          "ms": 70.8,
+          "width": 1153,
+          "height": 574,
+          "bytes": 70332
+        }
+      ],
+      "memory": {
+        "before": 23171929,
+        "loaded": 23171929,
+        "dragged": 29157572,
+        "laidOut": 33347234,
+        "png-viewport": 36542015,
+        "png-all": 28157387
+      }
+    },
+    {
+      "count": 50,
+      "edges": 49,
+      "scenario": "chain",
+      "loadMs": 54.2,
+      "selection": {
+        "samples": 10,
+        "medianMs": 20.7,
+        "p95Ms": 24,
+        "maxMs": 24
+      },
+      "dragFrames": {
+        "samples": 30,
+        "medianMs": 8.4,
+        "p95Ms": 12.5,
+        "maxMs": 12.6
+      },
+      "dragCommitMs": 17,
+      "timings": {
+        "encode": {
+          "samples": 10,
+          "medianMs": 0.5,
+          "p95Ms": 0.8,
+          "maxMs": 0.8
+        },
+        "decode": {
+          "samples": 10,
+          "medianMs": 1.5,
+          "p95Ms": 1.7,
+          "maxMs": 1.7
+        },
+        "jsonExport": {
+          "samples": 10,
+          "medianMs": 0.1,
+          "p95Ms": 0.2,
+          "maxMs": 0.2
+        },
+        "jsonImport": {
+          "samples": 10,
+          "medianMs": 0.6,
+          "p95Ms": 0.7,
+          "maxMs": 0.7
+        }
+      },
+      "layout": {
+        "samples": 2,
+        "medianMs": 45.3,
+        "p95Ms": 45.3,
+        "maxMs": 45.3
+      },
+      "exports": [
+        {
+          "scope": "viewport",
+          "ms": 176.2,
+          "width": 732,
+          "height": 792,
+          "bytes": 139574
+        },
+        {
+          "scope": "all",
+          "ms": 552.3,
+          "width": 2177,
+          "height": 1214,
+          "bytes": 285426
+        }
+      ],
+      "memory": {
+        "before": 28157387,
+        "loaded": 33206633,
+        "dragged": 42129415,
+        "laidOut": 49202496,
+        "png-viewport": 43206077,
+        "png-all": 47585817
+      }
+    },
+    {
+      "count": 100,
+      "edges": 99,
+      "scenario": "chain",
+      "loadMs": 88.6,
+      "selection": {
+        "samples": 10,
+        "medianMs": 30.9,
+        "p95Ms": 38.2,
+        "maxMs": 38.2
+      },
+      "dragFrames": {
+        "samples": 30,
+        "medianMs": 16.7,
+        "p95Ms": 20.9,
+        "maxMs": 29.1
+      },
+      "dragCommitMs": 23.4,
+      "timings": {
+        "encode": {
+          "samples": 10,
+          "medianMs": 0.7,
+          "p95Ms": 7.9,
+          "maxMs": 7.9
+        },
+        "decode": {
+          "samples": 10,
+          "medianMs": 1.2,
+          "p95Ms": 2.2,
+          "maxMs": 2.2
+        },
+        "jsonExport": {
+          "samples": 10,
+          "medianMs": 0.2,
+          "p95Ms": 0.3,
+          "maxMs": 0.3
+        },
+        "jsonImport": {
+          "samples": 10,
+          "medianMs": 0.4,
+          "p95Ms": 0.5,
+          "maxMs": 0.5
+        }
+      },
+      "layout": {
+        "samples": 2,
+        "medianMs": 73.5,
+        "p95Ms": 73.5,
+        "maxMs": 73.5
+      },
+      "exports": [
+        {
+          "scope": "viewport",
+          "ms": 1029,
+          "width": 732,
+          "height": 792,
+          "bytes": 137106
+        },
+        {
+          "scope": "all",
+          "ms": 7192.7,
+          "width": 2689,
+          "height": 1694,
+          "bytes": 523698
+        }
+      ],
+      "memory": {
+        "before": 47585817,
+        "loaded": 56127537,
+        "dragged": 70333697,
+        "laidOut": 56308458,
+        "png-viewport": 40846279,
+        "png-all": 32016969
+      }
+    },
+    {
+      "count": 300,
+      "edges": 299,
+      "scenario": "chain",
+      "loadMs": 222.6,
+      "selection": {
+        "samples": 10,
+        "medianMs": 67.8,
+        "p95Ms": 97.4,
+        "maxMs": 97.4
+      },
+      "dragFrames": {
+        "samples": 30,
+        "medianMs": 33.4,
+        "p95Ms": 41.7,
+        "maxMs": 50
+      },
+      "dragCommitMs": 54.3,
+      "timings": {
+        "encode": {
+          "samples": 10,
+          "medianMs": 1.7,
+          "p95Ms": 2,
+          "maxMs": 2
+        },
+        "decode": {
+          "samples": 10,
+          "medianMs": 3.4,
+          "p95Ms": 4.9,
+          "maxMs": 4.9
+        },
+        "jsonExport": {
+          "samples": 10,
+          "medianMs": 0.4,
+          "p95Ms": 0.6,
+          "maxMs": 0.6
+        },
+        "jsonImport": {
+          "samples": 10,
+          "medianMs": 1.4,
+          "p95Ms": 2.8,
+          "maxMs": 2.8
+        }
+      },
+      "layout": {
+        "samples": 2,
+        "medianMs": 135.8,
+        "p95Ms": 135.8,
+        "maxMs": 135.8
+      },
+      "exports": [
+        {
+          "scope": "viewport",
+          "ms": 246.4,
+          "width": 732,
+          "height": 792,
+          "bytes": 137451
+        },
+        {
+          "scope": "all",
+          "ms": 1560.4,
+          "width": 4737,
+          "height": 2814,
+          "bytes": 1428545
+        }
+      ],
+      "memory": {
+        "before": 32016969,
+        "loaded": 57084146,
+        "dragged": 57575165,
+        "laidOut": 85304584,
+        "png-viewport": 65878839,
+        "png-all": 62970214
+      }
+    },
+    {
+      "count": 10,
+      "edges": 18,
+      "scenario": "dense",
+      "loadMs": 73.5,
+      "selection": {
+        "samples": 10,
+        "medianMs": 12.7,
+        "p95Ms": 15.5,
+        "maxMs": 15.5
+      },
+      "dragFrames": {
+        "samples": 30,
+        "medianMs": 4.2,
+        "p95Ms": 4.3,
+        "maxMs": 4.3
+      },
+      "dragCommitMs": 12.6,
+      "timings": {
+        "encode": {
+          "samples": 10,
+          "medianMs": 0.2,
+          "p95Ms": 0.2,
+          "maxMs": 0.2
+        },
+        "decode": {
+          "samples": 10,
+          "medianMs": 0.3,
+          "p95Ms": 0.6,
+          "maxMs": 0.6
+        },
+        "jsonExport": {
+          "samples": 10,
+          "medianMs": 0,
+          "p95Ms": 0.1,
+          "maxMs": 0.1
+        },
+        "jsonImport": {
+          "samples": 10,
+          "medianMs": 0.1,
+          "p95Ms": 0.3,
+          "maxMs": 0.3
+        }
+      },
+      "layout": {
+        "samples": 2,
+        "medianMs": 37,
+        "p95Ms": 37,
+        "maxMs": 37
+      },
+      "exports": [
+        {
+          "scope": "viewport",
+          "ms": 82.9,
+          "width": 732,
+          "height": 792,
+          "bytes": 77854
+        },
+        {
+          "scope": "all",
+          "ms": 83.1,
+          "width": 1172,
+          "height": 574,
+          "bytes": 85823
+        }
+      ],
+      "memory": {
+        "before": 62970214,
+        "loaded": 72719143,
+        "dragged": 87800135,
+        "laidOut": 70908355,
+        "png-viewport": 74289323,
+        "png-all": 76261925
+      }
+    },
+    {
+      "count": 50,
+      "edges": 136,
+      "scenario": "dense",
+      "loadMs": 65.4,
+      "selection": {
+        "samples": 10,
+        "medianMs": 26.7,
+        "p95Ms": 28.1,
+        "maxMs": 28.1
+      },
+      "dragFrames": {
+        "samples": 30,
+        "medianMs": 12.5,
+        "p95Ms": 16.6,
+        "maxMs": 16.7
+      },
+      "dragCommitMs": 23.6,
+      "timings": {
+        "encode": {
+          "samples": 10,
+          "medianMs": 0.5,
+          "p95Ms": 0.5,
+          "maxMs": 0.5
+        },
+        "decode": {
+          "samples": 10,
+          "medianMs": 1.1,
+          "p95Ms": 1.6,
+          "maxMs": 1.6
+        },
+        "jsonExport": {
+          "samples": 10,
+          "medianMs": 0.1,
+          "p95Ms": 0.3,
+          "maxMs": 0.3
+        },
+        "jsonImport": {
+          "samples": 10,
+          "medianMs": 0.8,
+          "p95Ms": 2.2,
+          "maxMs": 2.2
+        }
+      },
+      "layout": {
+        "samples": 2,
+        "medianMs": 133,
+        "p95Ms": 133,
+        "maxMs": 133
+      },
+      "exports": [
+        {
+          "scope": "viewport",
+          "ms": 1261.4,
+          "width": 732,
+          "height": 792,
+          "bytes": 174193
+        },
+        {
+          "scope": "all",
+          "ms": 1401.3,
+          "width": 2196,
+          "height": 1214,
+          "bytes": 392410
+        }
+      ],
+      "memory": {
+        "before": 76261925,
+        "loaded": 83519585,
+        "dragged": 75264720,
+        "laidOut": 100981985,
+        "png-viewport": 88383857,
+        "png-all": 99240557
+      }
+    },
+    {
+      "count": 100,
+      "edges": 286,
+      "scenario": "dense",
+      "loadMs": 106.4,
+      "selection": {
+        "samples": 10,
+        "medianMs": 41.1,
+        "p95Ms": 61.2,
+        "maxMs": 61.2
+      },
+      "dragFrames": {
+        "samples": 30,
+        "medianMs": 16.7,
+        "p95Ms": 20.9,
+        "maxMs": 20.9
+      },
+      "dragCommitMs": 34.4,
+      "timings": {
+        "encode": {
+          "samples": 10,
+          "medianMs": 0.9,
+          "p95Ms": 1.4,
+          "maxMs": 1.4
+        },
+        "decode": {
+          "samples": 10,
+          "medianMs": 2.4,
+          "p95Ms": 4.9,
+          "maxMs": 4.9
+        },
+        "jsonExport": {
+          "samples": 10,
+          "medianMs": 0.3,
+          "p95Ms": 0.4,
+          "maxMs": 0.4
+        },
+        "jsonImport": {
+          "samples": 10,
+          "medianMs": 1,
+          "p95Ms": 1.7,
+          "maxMs": 1.7
+        }
+      },
+      "layout": {
+        "samples": 2,
+        "medianMs": 266.5,
+        "p95Ms": 266.5,
+        "maxMs": 266.5
+      },
+      "exports": [
+        {
+          "scope": "viewport",
+          "ms": 298.9,
+          "width": 732,
+          "height": 792,
+          "bytes": 174589
+        },
+        {
+          "scope": "all",
+          "ms": 937.7,
+          "width": 2719,
+          "height": 1694,
+          "bytes": 724589
+        }
+      ],
+      "memory": {
+        "before": 99240557,
+        "loaded": 112810443,
+        "dragged": 100611686,
+        "laidOut": 112152939,
+        "png-viewport": 107898823,
+        "png-all": 54127688
+      }
+    },
+    {
+      "count": 300,
+      "edges": 888,
+      "scenario": "dense",
+      "loadMs": 348.8,
+      "selection": {
+        "samples": 10,
+        "medianMs": 117.3,
+        "p95Ms": 155,
+        "maxMs": 155
+      },
+      "dragFrames": {
+        "samples": 30,
+        "medianMs": 54.2,
+        "p95Ms": 58.4,
+        "maxMs": 58.4
+      },
+      "dragCommitMs": 92.4,
+      "timings": {
+        "encode": {
+          "samples": 10,
+          "medianMs": 3.2,
+          "p95Ms": 8,
+          "maxMs": 8
+        },
+        "decode": {
+          "samples": 10,
+          "medianMs": 9.7,
+          "p95Ms": 11.9,
+          "maxMs": 11.9
+        },
+        "jsonExport": {
+          "samples": 10,
+          "medianMs": 1,
+          "p95Ms": 1.3,
+          "maxMs": 1.3
+        },
+        "jsonImport": {
+          "samples": 10,
+          "medianMs": 4,
+          "p95Ms": 5.2,
+          "maxMs": 5.2
+        }
+      },
+      "layout": {
+        "samples": 2,
+        "medianMs": 1070,
+        "p95Ms": 1070,
+        "maxMs": 1070
+      },
+      "exports": [
+        {
+          "scope": "viewport",
+          "ms": 595.7,
+          "width": 732,
+          "height": 792,
+          "bytes": 174788
+        },
+        {
+          "scope": "all",
+          "ms": 2742.9,
+          "width": 4767,
+          "height": 2819,
+          "bytes": 2081583
+        }
+      ],
+      "memory": {
+        "before": 54127688,
+        "loaded": 73756232,
+        "dragged": 95024192,
+        "laidOut": 123605170,
+        "png-viewport": 67279506,
+        "png-all": 99209622
+      }
+    }
+  ]
+}

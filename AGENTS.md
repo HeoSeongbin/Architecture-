@@ -2,7 +2,7 @@
 
 1. 작업 시작 전에 `docs/PROGRESS.md`, `PROJECT.md`, `docs/DECISIONS.md`, 이 파일과 관련 소스를 읽는다.
 2. `git status --short`와 diff로 기존 변경을 확인하고 보존한다. 현재 Phase와 승인된 작업 범위를 확인한 뒤 구현한다.
-3. 상세 기능 명세는 PROJECT.md를 기준으로 한다. Phase 0–4를 진행했다. 다음 미완료 단계는 docs/PROGRESS.md를 기준으로 확인하고 사용자가 승인한 현재 Phase만 진행한다.
+3. 상세 기능 명세는 PROJECT.md를 기준으로 한다. Phase 0–6을 진행했다. 다음 미완료 단계는 docs/PROGRESS.md를 기준으로 확인하고 사용자가 승인한 현재 Phase만 진행한다.
 4. React/TypeScript, React Flow, Zustand와 브라우저 전용 구조를 유지한다. 분석 없이 전체를 재작성하지 않는다.
 5. 변경 전 영향 범위를 분석한다. 기존 편집, 선택, Undo/Redo, URL/JSON 호환성을 검토하고 회귀 테스트를 작성한다.
 6. 사용자 데이터 가져오기에 실패하면 현재 그래프를 교체하지 않는다. 기존 URL 압축 형식의 무단 변경을 금지한다.

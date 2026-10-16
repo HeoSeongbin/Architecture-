@@ -297,7 +297,7 @@ it('adds assets by click with undo support and collapses categories', () => {
   expect(useGraphStore.getState().nodes[0].data.kind).toBe('postgresql');
   fireEvent.click(screen.getByRole('button', { name: '실행 취소' }));
   expect(useGraphStore.getState().nodes).toHaveLength(0);
-  fireEvent.click(screen.getByRole('button', { name: /데이터베이스\s*6/ }));
+  fireEvent.click(screen.getByRole('button', { name: /데이터베이스\s*8/ }));
   expect(screen.queryByRole('button', { name: /PostgreSQL.*Relational database/ })).not.toBeInTheDocument();
   fireEvent.change(screen.getByPlaceholderText('자산 검색'), { target: { value: 'PostgreSQL' } });
   expect(screen.getByRole('button', { name: /PostgreSQL.*Relational database/ })).toBeVisible();

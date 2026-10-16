@@ -4,7 +4,7 @@ import { DEFAULT_LAYOUT } from './utils/layoutGraph';
 import { DATA_VERSION, GRAPH_LIMITS, URL_MAX_LENGTH } from './utils/graphValidation';
 import type { GraphState } from './types/graph';
 import { useEffect, useRef, useState } from 'react';
-import { toPng } from 'html-to-image';
+import { ExportDialog } from './components/ExportDialog';
 import { ReactFlowProvider } from '@xyflow/react';
 import { ArchitectureCanvas } from './components/ArchitectureCanvas';
 import { Inspector } from './components/Inspector';
@@ -27,6 +27,8 @@ export default function App() {
     error: false,
   });
   const [busy, setBusy] = useState(false);
+  const [layoutBusy, setLayoutBusy] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [activePanel, setActivePanel] = useState<'assets' | 'inspector' | null>(null);
   const { theme, toggleTheme } = useEditorTheme();
   const narrow = useNarrowScreen();
@@ -36,7 +38,7 @@ export default function App() {
   };
   const [showCanvasGrid, setShowCanvasGrid] = useState(true);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const nodes = useGraphStore((state) => state.nodes);
+  const nodeCount = useGraphStore((state) => state.nodes.length);
   const edges = useGraphStore((state) => state.edges);
   const canUndo = useGraphStore((state) => state.canUndo);
   const canRedo = useGraphStore((state) => state.canRedo);
@@ -57,7 +59,7 @@ export default function App() {
         setActivePanel(null);
         if (narrow && activePanel) panelOpener.current?.focus();
       }
-      if (document.querySelector('[role="alertdialog"]')) return;
+      if (document.querySelector('[role="alertdialog"], .export-dialog')) return;
       const isModifierPressed = event.ctrlKey || event.metaKey;
       const key = event.key.toLowerCase();
 
@@ -205,29 +207,6 @@ export default function App() {
     }
   };
 
-  const downloadImage = async () => {
-    setBusy(true);
-    try {
-      const flowPane = document.querySelector<HTMLElement>('.react-flow');
-      if (!flowPane) throw new Error('React Flow pane not found');
-
-      notify('현재 화면을 PNG로 만드는 중입니다…');
-      const dataUrl = await toPng(flowPane, {
-        backgroundColor: theme === 'dark' ? '#111827' : '#f8fafc',
-        cacheBust: true,
-        pixelRatio: 2,
-        filter: (node) => !(node instanceof HTMLElement && node.classList.contains('react-flow__panel')),
-      });
-
-      triggerDownload(dataUrl, `architecture-diagram-${new Date().toISOString().slice(0, 10)}.png`);
-      notify('PNG 다운로드를 요청했습니다. 현재 화면 밖의 요소는 포함되지 않습니다.');
-    } catch {
-      notify('PNG를 만들지 못했습니다. 다시 시도하거나 JSON으로 백업하세요.', true);
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const togglePanel = (panel: 'assets' | 'inspector') => {
     panelOpener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setActivePanel((value) => (value === panel ? null : panel));
@@ -238,21 +217,25 @@ export default function App() {
   };
   const layout = async () => {
     setBusy(true);
+    setLayoutBusy(true);
     try {
       const result = await autoLayout(layoutOptions);
       notify(
         result === undefined
           ? '정렬할 노드가 없습니다.'
-          : result === 'stale'
-            ? '정렬 중 작업이 변경되어 결과를 적용하지 않았습니다.'
-            : result === 'fallback'
-              ? '정렬 엔진 오류로 기본 배치를 적용했습니다. 실행 취소할 수 있습니다.'
-              : '자동 정렬을 적용했습니다. 전체 보기로 배치를 확인하세요.',
+          : result === 'cancelled'
+            ? '정렬을 취소했습니다.'
+            : result === 'stale'
+              ? '정렬 중 작업이 변경되어 결과를 적용하지 않았습니다.'
+              : result === 'fallback'
+                ? '정렬 엔진 오류로 기본 배치를 적용했습니다. 실행 취소할 수 있습니다.'
+                : '자동 정렬을 적용했습니다. 전체 보기로 배치를 확인하세요.',
       );
     } catch (error) {
       notify(error instanceof Error ? error.message : '자동 정렬을 완료하지 못했습니다.', true);
     } finally {
       setBusy(false);
+      setLayoutBusy(false);
     }
   };
   return (
@@ -269,6 +252,8 @@ export default function App() {
           캔버스로 건너뛰기
         </a>
         <EditorToolbar
+          layoutBusy={layoutBusy}
+          cancelLayout={() => useGraphStore.getState().cancelAutoLayout()}
           layoutOptions={layoutOptions}
           setLayoutOptions={setLayoutOptions}
           canUndo={canUndo}
@@ -281,7 +266,7 @@ export default function App() {
           copy={() => void copyShareLink()}
           importJson={() => fileInputRef.current?.click()}
           exportJson={exportJson}
-          exportPng={() => void downloadImage()}
+          exportPng={() => setExportOpen(true)}
           theme={theme}
           toggleTheme={toggleTheme}
           grid={showCanvasGrid}
@@ -326,6 +311,7 @@ export default function App() {
             <Inspector />
           </div>
         </div>
+        {exportOpen && <ExportDialog theme={theme} close={() => setExportOpen(false)} onBusy={setBusy} />}
         {(replacement || persistence.external) && (
           <ReplaceGraphDialog
             title={replacement?.title ?? '다른 공유 URL을 불러올까요?'}
@@ -352,7 +338,7 @@ export default function App() {
             </p>
           )}
           <span className="diagram-stats">
-            노드 {nodes.length} · 연결 {edges.length} · URL {persistence.urlSize.toLocaleString()}자
+            노드 {nodeCount} · 연결 {edges.length} · URL {persistence.urlSize.toLocaleString()}자
           </span>
         </footer>
       </div>

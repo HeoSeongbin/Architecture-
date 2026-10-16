@@ -1,0 +1,425 @@
+{
+  "timestamp": "2026-10-16T04:06:43.476Z",
+  "runtime": "v24.12.0",
+  "platform": "win32 10.0.26200",
+  "cpu": "AMD Ryzen AI 7 350 w/ Radeon 860M              ",
+  "note": "Node core only, warmup excluded; heap delta is GC-dependent and is not peak/retained/native memory.",
+  "rows": [
+    {
+      "count": 10,
+      "edges": 9,
+      "scenario": "chain",
+      "hashLength": 876,
+      "jsonBytes": 5142,
+      "heapDeltaBytes": 7228392,
+      "operations": {
+        "encode": {
+          "samples": 15,
+          "medianMs": 0.56,
+          "p95Ms": 0.8,
+          "maxMs": 0.8
+        },
+        "decode": {
+          "samples": 15,
+          "medianMs": 0.7,
+          "p95Ms": 1.12,
+          "maxMs": 1.12
+        },
+        "jsonExport": {
+          "samples": 15,
+          "medianMs": 0.04,
+          "p95Ms": 0.04,
+          "maxMs": 0.04
+        },
+        "jsonImport": {
+          "samples": 15,
+          "medianMs": 0.1,
+          "p95Ms": 0.29,
+          "maxMs": 0.29
+        },
+        "selection30": {
+          "samples": 15,
+          "medianMs": 0.42,
+          "p95Ms": 1.07,
+          "maxMs": 1.07
+        },
+        "drag30": {
+          "samples": 15,
+          "medianMs": 0.49,
+          "p95Ms": 0.79,
+          "maxMs": 0.79
+        },
+        "layout": {
+          "samples": 5,
+          "medianMs": 30.94,
+          "p95Ms": 31.73,
+          "maxMs": 31.73
+        }
+      }
+    },
+    {
+      "count": 50,
+      "edges": 49,
+      "scenario": "chain",
+      "hashLength": 2856,
+      "jsonBytes": 27189,
+      "heapDeltaBytes": 2905192,
+      "operations": {
+        "encode": {
+          "samples": 15,
+          "medianMs": 0.41,
+          "p95Ms": 2,
+          "maxMs": 2
+        },
+        "decode": {
+          "samples": 15,
+          "medianMs": 0.89,
+          "p95Ms": 1.55,
+          "maxMs": 1.55
+        },
+        "jsonExport": {
+          "samples": 15,
+          "medianMs": 0.08,
+          "p95Ms": 0.22,
+          "maxMs": 0.22
+        },
+        "jsonImport": {
+          "samples": 15,
+          "medianMs": 0.27,
+          "p95Ms": 1.13,
+          "maxMs": 1.13
+        },
+        "selection30": {
+          "samples": 15,
+          "medianMs": 0.99,
+          "p95Ms": 1.81,
+          "maxMs": 1.81
+        },
+        "drag30": {
+          "samples": 15,
+          "medianMs": 1.98,
+          "p95Ms": 2.41,
+          "maxMs": 2.41
+        },
+        "layout": {
+          "samples": 5,
+          "medianMs": 31.55,
+          "p95Ms": 46.61,
+          "maxMs": 46.61
+        }
+      }
+    },
+    {
+      "count": 100,
+      "edges": 99,
+      "scenario": "chain",
+      "hashLength": 4392,
+      "jsonBytes": 54867,
+      "heapDeltaBytes": 4282856,
+      "operations": {
+        "encode": {
+          "samples": 15,
+          "medianMs": 0.57,
+          "p95Ms": 0.89,
+          "maxMs": 0.89
+        },
+        "decode": {
+          "samples": 15,
+          "medianMs": 1.42,
+          "p95Ms": 2.33,
+          "maxMs": 2.33
+        },
+        "jsonExport": {
+          "samples": 15,
+          "medianMs": 0.19,
+          "p95Ms": 0.42,
+          "maxMs": 0.42
+        },
+        "jsonImport": {
+          "samples": 15,
+          "medianMs": 0.54,
+          "p95Ms": 1.03,
+          "maxMs": 1.03
+        },
+        "selection30": {
+          "samples": 15,
+          "medianMs": 2.71,
+          "p95Ms": 3.41,
+          "maxMs": 3.41
+        },
+        "drag30": {
+          "samples": 15,
+          "medianMs": 4.63,
+          "p95Ms": 5.63,
+          "maxMs": 5.63
+        },
+        "layout": {
+          "samples": 5,
+          "medianMs": 32.44,
+          "p95Ms": 48.89,
+          "maxMs": 48.89
+        }
+      }
+    },
+    {
+      "count": 300,
+      "edges": 299,
+      "scenario": "chain",
+      "hashLength": 11876,
+      "jsonBytes": 166663,
+      "heapDeltaBytes": 67028888,
+      "operations": {
+        "encode": {
+          "samples": 15,
+          "medianMs": 1.79,
+          "p95Ms": 2.12,
+          "maxMs": 2.12
+        },
+        "decode": {
+          "samples": 15,
+          "medianMs": 4.44,
+          "p95Ms": 6.98,
+          "maxMs": 6.98
+        },
+        "jsonExport": {
+          "samples": 15,
+          "medianMs": 0.79,
+          "p95Ms": 0.99,
+          "maxMs": 0.99
+        },
+        "jsonImport": {
+          "samples": 15,
+          "medianMs": 2.21,
+          "p95Ms": 2.92,
+          "maxMs": 2.92
+        },
+        "selection30": {
+          "samples": 15,
+          "medianMs": 20.78,
+          "p95Ms": 23,
+          "maxMs": 23
+        },
+        "drag30": {
+          "samples": 15,
+          "medianMs": 25.11,
+          "p95Ms": 26.98,
+          "maxMs": 26.98
+        },
+        "layout": {
+          "samples": 5,
+          "medianMs": 67.4,
+          "p95Ms": 89.5,
+          "maxMs": 89.5
+        }
+      }
+    },
+    {
+      "count": 10,
+      "edges": 18,
+      "scenario": "dense",
+      "hashLength": 968,
+      "jsonBytes": 7890,
+      "heapDeltaBytes": -34765560,
+      "operations": {
+        "encode": {
+          "samples": 15,
+          "medianMs": 0.21,
+          "p95Ms": 0.37,
+          "maxMs": 0.37
+        },
+        "decode": {
+          "samples": 15,
+          "medianMs": 0.42,
+          "p95Ms": 0.8,
+          "maxMs": 0.8
+        },
+        "jsonExport": {
+          "samples": 15,
+          "medianMs": 0.04,
+          "p95Ms": 0.04,
+          "maxMs": 0.04
+        },
+        "jsonImport": {
+          "samples": 15,
+          "medianMs": 0.2,
+          "p95Ms": 0.3,
+          "maxMs": 0.3
+        },
+        "selection30": {
+          "samples": 15,
+          "medianMs": 0.12,
+          "p95Ms": 0.2,
+          "maxMs": 0.2
+        },
+        "drag30": {
+          "samples": 15,
+          "medianMs": 0.42,
+          "p95Ms": 0.57,
+          "maxMs": 0.57
+        },
+        "layout": {
+          "samples": 5,
+          "medianMs": 31.2,
+          "p95Ms": 47.83,
+          "maxMs": 47.83
+        }
+      }
+    },
+    {
+      "count": 50,
+      "edges": 136,
+      "scenario": "dense",
+      "hashLength": 3696,
+      "jsonBytes": 54069,
+      "heapDeltaBytes": 29129608,
+      "operations": {
+        "encode": {
+          "samples": 15,
+          "medianMs": 1.18,
+          "p95Ms": 3.4,
+          "maxMs": 3.4
+        },
+        "decode": {
+          "samples": 15,
+          "medianMs": 2.03,
+          "p95Ms": 3.14,
+          "maxMs": 3.14
+        },
+        "jsonExport": {
+          "samples": 15,
+          "medianMs": 0.24,
+          "p95Ms": 0.42,
+          "maxMs": 0.42
+        },
+        "jsonImport": {
+          "samples": 15,
+          "medianMs": 0.87,
+          "p95Ms": 1.91,
+          "maxMs": 1.91
+        },
+        "selection30": {
+          "samples": 15,
+          "medianMs": 0.9,
+          "p95Ms": 1.53,
+          "maxMs": 1.53
+        },
+        "drag30": {
+          "samples": 15,
+          "medianMs": 3.52,
+          "p95Ms": 5.1,
+          "maxMs": 5.1
+        },
+        "layout": {
+          "samples": 5,
+          "medianMs": 94.78,
+          "p95Ms": 123.13,
+          "maxMs": 123.13
+        }
+      }
+    },
+    {
+      "count": 100,
+      "edges": 286,
+      "scenario": "dense",
+      "hashLength": 6416,
+      "jsonBytes": 112705,
+      "heapDeltaBytes": 59908960,
+      "operations": {
+        "encode": {
+          "samples": 15,
+          "medianMs": 0.86,
+          "p95Ms": 1.13,
+          "maxMs": 1.13
+        },
+        "decode": {
+          "samples": 15,
+          "medianMs": 2.84,
+          "p95Ms": 4.84,
+          "maxMs": 4.84
+        },
+        "jsonExport": {
+          "samples": 15,
+          "medianMs": 0.47,
+          "p95Ms": 0.78,
+          "maxMs": 0.78
+        },
+        "jsonImport": {
+          "samples": 15,
+          "medianMs": 2.15,
+          "p95Ms": 2.57,
+          "maxMs": 2.57
+        },
+        "selection30": {
+          "samples": 15,
+          "medianMs": 2.81,
+          "p95Ms": 3.54,
+          "maxMs": 3.54
+        },
+        "drag30": {
+          "samples": 15,
+          "medianMs": 7.67,
+          "p95Ms": 8.55,
+          "maxMs": 8.55
+        },
+        "layout": {
+          "samples": 5,
+          "medianMs": 299.33,
+          "p95Ms": 310.18,
+          "maxMs": 310.18
+        }
+      }
+    },
+    {
+      "count": 300,
+      "edges": 888,
+      "scenario": "dense",
+      "hashLength": 18272,
+      "jsonBytes": 350527,
+      "heapDeltaBytes": 22679640,
+      "operations": {
+        "encode": {
+          "samples": 15,
+          "medianMs": 2.74,
+          "p95Ms": 4.49,
+          "maxMs": 4.49
+        },
+        "decode": {
+          "samples": 15,
+          "medianMs": 11.13,
+          "p95Ms": 15.73,
+          "maxMs": 15.73
+        },
+        "jsonExport": {
+          "samples": 15,
+          "medianMs": 0.89,
+          "p95Ms": 1.37,
+          "maxMs": 1.37
+        },
+        "jsonImport": {
+          "samples": 15,
+          "medianMs": 5.65,
+          "p95Ms": 6.79,
+          "maxMs": 6.79
+        },
+        "selection30": {
+          "samples": 15,
+          "medianMs": 22.02,
+          "p95Ms": 23.63,
+          "maxMs": 23.63
+        },
+        "drag30": {
+          "samples": 15,
+          "medianMs": 34.86,
+          "p95Ms": 36.38,
+          "maxMs": 36.38
+        },
+        "layout": {
+          "samples": 5,
+          "medianMs": 1090.69,
+          "p95Ms": 1142.58,
+          "maxMs": 1142.58
+        }
+      }
+    }
+  ]
+}

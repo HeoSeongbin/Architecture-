@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { addEdge, applyEdgeChanges, applyNodeChanges, type Connection, type EdgeChange, type NodeChange } from '@xyflow/react';
 import { layoutGraph, type LayoutOptions } from '../utils/layoutGraph';
+import { layoutEngine, LayoutCancelledError } from '../utils/layoutEngine';
 import type { ArchitectureEdge, ArchitectureEdgeData, ArchitectureNode, GraphState } from '../types/graph';
 import { presentGraph } from '../utils/edgeUtils';
 import { toExportableGraph } from '../utils/jsonUtils';
@@ -85,10 +86,16 @@ const commitGraph = (state: GraphStore, graph: GraphState, before: GraphState = 
 };
 
 const clearEdgeRoutes = (edges: ArchitectureEdge[]) =>
-  edges.map((edge) => ({
-    ...edge,
-    data: { ...edge.data, routePoints: undefined },
-  }));
+  edges.some((edge) => edge.data?.routePoints !== undefined)
+    ? edges.map((edge) =>
+        edge.data?.routePoints === undefined
+          ? edge
+          : {
+              ...edge,
+              data: { ...edge.data, routePoints: undefined },
+            },
+      )
+    : edges;
 
 const getEdgeHandles = (source?: ArchitectureNode, target?: ArchitectureNode) => {
   if (!source || !target) return {};
@@ -206,7 +213,8 @@ interface GraphStore extends GraphState {
   duplicateNode: (nodeId: string) => void;
   deleteNode: (nodeId: string) => void;
   deleteEdge: (edgeId: string) => void;
-  autoLayout: (options?: LayoutOptions) => Promise<'applied' | 'fallback' | 'stale' | undefined>;
+  autoLayout: (options?: LayoutOptions) => Promise<'applied' | 'fallback' | 'stale' | 'cancelled' | undefined>;
+  cancelAutoLayout: () => void;
   undo: () => void;
   redo: () => void;
   onNodesChange: (changes: NodeChange<ArchitectureNode>[]) => void;
@@ -507,11 +515,21 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
     if (!state.nodes.length) return;
     const request = ++layoutRequest;
     const signature = graphSignature(state);
-    const result = await layoutGraph(state, options);
+    let result: Awaited<ReturnType<typeof layoutGraph>>;
+    try {
+      result = await layoutGraph(state, options);
+    } catch (error) {
+      if (error instanceof LayoutCancelledError) return 'cancelled';
+      throw error;
+    }
     if (request !== layoutRequest || get().past !== state.past || pendingMove || graphSignature(get()) !== signature) return 'stale';
     resetTransform();
     set(commitGraph(get(), result.graph));
     return result.fallback ? 'fallback' : 'applied';
+  },
+  cancelAutoLayout: () => {
+    layoutRequest++;
+    layoutEngine.cancel();
   },
   undo: () =>
     set((state) => {
@@ -570,14 +588,17 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       );
       const removedIds = new Set(changes.filter((change) => change.type === 'remove').map((change) => change.id));
       const surviving = removeElements(state, removedIds);
-      let nodes = orderNodesForGroups(applyNodeChanges(changes, surviving.nodes));
+      let nodes = applyNodeChanges(changes, surviving.nodes);
+      if (changes.some((change) => change.type === 'add' || change.type === 'replace' || change.type === 'remove'))
+        nodes = orderNodesForGroups(nodes);
       // Persist explicit resize dimensions; measured-only changes never create history.
-      nodes = nodes.map((node) => {
-        const sizeChange = changes.find(
-          (change) => change.type === 'dimensions' && change.id === node.id && change.dimensions && change.setAttributes,
-        );
-        return sizeChange?.type === 'dimensions' ? { ...node, style: { ...node.style, ...sizeChange.dimensions } } : node;
-      });
+      if (changes.some((change) => change.type === 'dimensions' && change.setAttributes))
+        nodes = nodes.map((node) => {
+          const sizeChange = changes.find(
+            (change) => change.type === 'dimensions' && change.id === node.id && change.dimensions && change.setAttributes,
+          );
+          return sizeChange?.type === 'dimensions' ? { ...node, style: { ...node.style, ...sizeChange.dimensions } } : node;
+        });
       if (finished && !pendingResize) {
         const roots = new Set(selectedMoveRoots(nodes));
         for (const id of movedNodeIds) {

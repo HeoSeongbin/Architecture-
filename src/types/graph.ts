@@ -1,27 +1,41 @@
 import type { Edge, Node } from '@xyflow/react';
 
-export type ArchitectureNodeKind =
-  | 'mssql'
-  | 'oracle'
-  | 'mariadb'
-  | 'postgresql'
-  | 'mongodb'
-  | 'redis'
-  | 'docker'
-  | 'nginx'
-  | 'wsl'
-  | 'nodejs'
-  | 'python'
-  | 'spring'
-  | 'aspnet'
-  | 'react'
-  | 'aws'
-  | 'azure'
-  | 'gcp'
-  | 'loadbalancer'
-  | 'firewall'
-  | 'queue'
-  | 'group';
+export const architectureNodeKinds = [
+  'mssql',
+  'oracle',
+  'mariadb',
+  'postgresql',
+  'mongodb',
+  'redis',
+  'docker',
+  'nginx',
+  'wsl',
+  'nodejs',
+  'python',
+  'spring',
+  'aspnet',
+  'react',
+  'aws',
+  'azure',
+  'gcp',
+  'loadbalancer',
+  'firewall',
+  'queue',
+  'group',
+  'mysql',
+  'sqlite',
+  'kubernetes',
+  'linux',
+  'apigateway',
+  'kafka',
+  'fastapi',
+  'nextjs',
+  'awsec2',
+  'awss3',
+  'awslambda',
+  'azurestorage',
+] as const;
+export type ArchitectureNodeKind = (typeof architectureNodeKinds)[number];
 
 export interface ArchitectureNodeData extends Record<string, unknown> {
   kind: ArchitectureNodeKind;

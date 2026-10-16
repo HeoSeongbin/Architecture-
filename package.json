@@ -13,7 +13,11 @@
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "npm run lint && npm run test && npm run build"
+    "check": "npm run lint && npm run test && npm run build",
+    "bench:core": "vitest run --config vitest.benchmark.config.ts",
+    "bench:build": "vite build --config vite.benchmark.config.ts",
+    "bench:serve": "vite preview --config vite.benchmark.config.ts --host 127.0.0.1 --port 4174",
+    "bench:fixtures": "node scripts/create-benchmark-fixtures.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.2",

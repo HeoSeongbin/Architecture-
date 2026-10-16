@@ -27,6 +27,8 @@ import { useEffect } from 'react';
 import { useGraphStore } from '../store/useGraphStore';
 type LabelMode = NonNullable<ArchitectureEdgeData['labelMode']>;
 interface Props {
+  layoutBusy: boolean;
+  cancelLayout: () => void;
   layoutOptions: LayoutOptions;
   setLayoutOptions: (value: LayoutOptions) => void;
   canUndo: boolean;
@@ -93,6 +95,11 @@ export function EditorToolbar(p: Props) {
           }
         }}
       >
+        {p.layoutBusy && (
+          <button className="secondary-button" onClick={p.cancelLayout}>
+            정렬 취소
+          </button>
+        )}
         <LayoutSettings value={p.layoutOptions} change={p.setLayoutOptions} apply={p.layout} busy={p.busy} />
         {p.narrow && (
           <button
@@ -129,7 +136,7 @@ export function EditorToolbar(p: Props) {
             </button>
             <button disabled={p.busy} onClick={p.exportPng}>
               <Download size={16} />
-              {p.busy ? '이미지 생성 중…' : 'PNG 내보내기'}
+              {p.busy ? '이미지 생성 중…' : 'PNG / SVG / PDF 내보내기'}
             </button>
             <button className="menu-danger" onClick={p.clear}>
               <Trash2 size={16} />

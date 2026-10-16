@@ -1,12 +1,12 @@
 # 개발 진행 상태
 
-갱신: 2026-10-15 (Asia/Seoul)
+갱신: 2026-10-16 (Asia/Seoul)
 
 ## 현재 Phase
 
-Phase 0–4 구현 및 아래 범위의 자동화/브라우저 검증 완료. 다음 미완료 단계는 Phase 5 자산 및 출력이다. 실제 파일 다운로드·휴대폰 터치·다른 브라우저·배포 검증은 완료하지 않았다.
+Phase 0–6 구현 및 아래 명시 범위의 자동화/브라우저 검증 완료. 다음 단계는 Phase 7 문서/배포 검증이다. Phase 6 성능 원자료와 전체 PNG 시간 목표 일부 미달은 docs/benchmarks에 기록했다. PNG/SVG/PDF는 실제 파일 저장과 출력 검증을 진행했지만 실제 휴대폰 터치·다른 브라우저·배포 검증은 완료하지 않았다.
 
-첫 실행 범위는 Phase 0–1, 이전 후속 실행은 Phase 2, 이전 실행은 Phase 3, 이번 실행은 Phase 4다. PROJECT.md가 전체 요구사항의 기준이며 다음 실행은 이 문서와 AGENTS.md, DECISIONS.md를 먼저 읽는다. Phase 3 시작 시 HEAD는 `7351f4c`, 작업 폴더는 깨끗한 상태였다. Phase 3 변경을 보존하며 Phase 4를 추가했다. 두 Phase 변경은 아직 커밋/push하지 않았다.
+Phase 3·4는 `38a99a5`로 커밋하여 origin/main에 push했다. Phase 5는 해당 HEAD의 깨끗한 작업 폴더에서 시작했고 Phase 6은 그 변경을 보존하여 진행했다. Phase 5·6 변경은 사용자 요청에 따라 이번 커밋에 함께 포함한다. 원격 반영 여부는 Git 이력으로 확인한다. PROJECT.md가 기능 명세이며 다음 실행도 AGENTS/PROJECT/PROGRESS/DECISIONS를 먼저 읽는다.
 
 ## 분석 기준과 구조
 
@@ -222,10 +222,95 @@ Phase 0–4 구현 및 아래 범위의 자동화/브라우저 검증 완료. �
 - 회귀: src/utils/phase4.test.ts(신규), src/test/fixtures/legacy-graph.json 및 legacy-hash.txt(신규), src/App.test.tsx.
 - 문서/근거: AGENTS.md, PROJECT.md, README.md, docs/PROGRESS.md, docs/DECISIONS.md, docs/screenshots/phase4-*.jpg.
 
-## 다음 작업 — Phase 5
+## Phase 5 구현 및 검증 (2026-10-16)
 
-기존 자산을 보존하면서 데이터 기반 자산 확장, 라이선스 확인, 즐겨찾기/최근 사용, 전체 영역 PNG 및 배율/배경/메모리 상한, 이후 SVG/PDF를 단계적으로 구현한다. 현재 Phase에서는 착수하지 않았다.
+### 실제 구현과 문서 비교
+
+시작 시 기존 20개 자산과 그룹, 검색/클릭/드래그는 있으나 즐겨찾기·최근 사용은 없었다. PNG는 현재 화면 2배/테마 배경 고정이며 전체 영역/배율/투명/상한/SVG/PDF가 없었다. Phase 5 미완료 기록과 일치했다. 이전 섹션의 당시 다운로드 미확인 기록은 이력으로 유지하고 아래 최신 검증으로 보완한다.
+
+### 구현 기능
+
+- 데이터 기반 자산: 기존 20개+그룹 유지, MySQL/SQLite/Kubernetes/Linux/API Gateway/Apache Kafka/FastAPI/Next.js/AWS EC2/S3/Lambda/Azure Storage 12개 추가. 총 32개+그룹. kind 목록을 type/검증에서 공유하고 모든 종류에 일반 Lucide 아이콘 매핑. 제품 공식 로고를 추가하지 않으며 패키지 ISC/Feather MIT 원문과 출처 보존.
+- 즐겨찾기/최근: 별 토글, 전체/즐겨찾기/최근 필터와 목록별 검색. localStorage 종류 목록만 저장, 최근 실제 클릭/drop 추가 8종 최신순/중복 제거. 그래프/URL/JSON/Undo와 독립. 잘못된/삭제된 저장 항목 필터, 저장 차단 시 메모리 상태 유지와 안내.
+- drop 보완: 외부/손상 JSON을 안전하게 무시하고 등록된 kind template만 사용하여 임의 label/isGroup 주입을 막음. 기존 그룹 내부 상대 좌표와 단일 Undo 유지. 사용 기록은 성공한 추가 후에만 갱신.
+- ExportDialog: 전체/현재 범위, PNG/PDF 배율 1–4, 테마/흰색/어두운색/투명 배경, 미리보기·크기·파일 생성/다운로드 분리, 오류/재시도/닫기 및 object URL 정리. 옵션 변경 시 이전 결과를 해제하여 다른 설정의 파일을 실수로 저장하지 않음.
+- 출력 경계: 원본 DOM을 변경하지 않는 offscreen 복제본. 실제 노드/그룹/엣지/라벨 DOM rect를 줌 역변환하고 여백 64px을 확보. 긴 연결선 라벨은 최대 320px 폭으로 줄바꿈하고 복제본을 재측정. 모든 노드가 DOM에 있는 현 React Flow 설정을 전제. 조작 UI/격자/핸들/선택/resize 표시 제외.
+- 상한: 최대 한 변 8,192px, 16,777,216픽셀. 생성 전/복제본 재측정 후 검사, 실제 canvas 크기/PNG blob 확인, finally host 정리. 실패/닫기는 현재 그래프/URL을 보존함.
+- SVG: html-to-image foreignObject 기반, 1배 논리 크기/벡터 확대. PDF: JPEG 기반 단일 페이지 PDF 1.4, CSS px×0.75 MediaBox, UTF-8/binary byte offset xref. 투명 PDF는 흰색으로 flatten. 검색 가능한 텍스트 PDF나 다중 페이지는 지원하지 않음.
+- 호환성: 기존 v1 URL/JSON/압축·선택 필드 유지. 신규 kind도 현재 앱에서 양쪽 왕복 및 Undo/Redo. 새 종류가 있는 문서는 Phase 5 이상 앱이 필요하며 이전 앱은 해당 종류를 모름. UI 설정/출력 옵션은 공유 데이터에 넣지 않음.
+
+### 검증 결과
+
+- 자동화: **10개 파일 127개 테스트** (이전 101개 + 26개). 기존 편집/legacy/레이아웃/URL/JSON 회귀를 유지. `npm run check`의 lint/strict TS/build 통과. `npm run format:check`와 `git diff --check`도 통과했다.
+- 자산: 33종 유일 ID·kind·icon·URL/JSON 왕복, Undo/Redo. 즐겨찾기가 노드/히스토리/hash를 바꾸지 않음, remount 복원/최근 8개/검색, 저장 차단/손상/중복·없는 종류 처리. drop 등록 kind/그룹 상대 좌표/Undo와 malformed/foreign payload 보존.
+- 출력: 음수 위치·현재 zoom·화면 밖 라벨/연결 경계, 픽셀 한도/경계값, 빈 전체 출력, clone/marker/라벨 보존·UI 제외, live DOM 불변, 실패 finally/잘못된 canvas 크기/null PNG, SVG UTF-8, PDF xref 실제 byte offset/MediaBox/stream, 배경 flatten. 모달 옵션/다운로드 링크/URL 해제/오류·재시도·생성 중 닫기 회귀.
+- 실제 Chromium 1280×900: sample+MySQL 추가/즐겨찾기, reload 후 최근/즐겨찾기/신규 노드 복원. 9노드를 그룹으로 묶고 배치한 10노드/7연결 출력 검증. 실제 출력 직전/직후 전체 노드 DOM style/transform 및 URL 동일 확인.
+- PNG 실제 다운로드: 전체 2배 3,530×1,474 RGBA, 모서리 alpha=0 (투명), 그룹·한글·아이콘·회전 라벨/화살표 표시 확인. 현재 화면 1배/흰색 파일도 저장 확인. 다운로드 버튼은 tool의 downloadMedia로 실제 파일을 저장했고 로컬에서 열어 검증했다.
+- SVG 실제 다운로드: 1,765×737 viewBox/foreignObject, 7개 라벨(HTTPS/Proxy/REST/gRPC/JDBC/SQL/Dev runtime) 텍스트 보존, Chromium 미리보기에서 전체 그룹 확인.
+- PDF 실제 다운로드: pypdf strict로 1페이지/MediaBox 1323.75×552.75pt, JPEG XObject 3530×1474 확인. Poppler PNG 렌더에서 그룹·한글·아이콘·연결선·라벨과 흰색 외곽 확인. 증거: screenshots/phase5-pdf.png.
+- 8,000×8,000 그룹을 4배로 요청하면 할당 전 한도 오류와 현재 작업 유지 표시, 닫기/Undo로 원래 1636×608 그룹 복원. 390×844 모달에서 document width=scrollWidth=390px, controls 표시 확인 후 viewport 복원.
+- screenshots: phase5-library.jpg, phase5-export.jpg, phase5-mobile.jpg, phase5-full.png(실제 출력), phase5-pdf.png(실제 PDF 렌더).
+- 브라우저 접근 초기 실패는 sandbox 내 서버 실행과 이전 연결 오류 탭 때문이었다. 서버를 승인받아 sandbox 밖 localhost로 실행, HTTP 200 확인 후 사용자가 정상 탭을 열어 검증을 계속했다. 보안 차단된 오류 탭은 우회하지 않았다.
+- 최초 실제 PNG의 연결 라벨이 일부 말줄임됨을 발견했다. SVG의 computed style과 출력 이미지를 조사해 라벨 줄바꿈/반올림 여백/재측정을 적용하고 실제 저장 이미지를 다시 열어 수정 확인했다.
+- 새 의존성/lock 변경 없음. JS 약 1,970.46KB/gzip 613.34KB, CSS 54.89KB, 기존 큰 chunk 경고 유지. 패키지 보안 경고의 새 audit는 이번에 실행하지 않았다.
+
+### 남은 문제 / 다음 범위
+
+- SVG는 foreignObject 지원 브라우저에 적합하다. Office/디자인 도구용 순수 SVG, 편집 가능한 SVG, 검색 가능한 PDF, 다중 페이지/PDF 인쇄 크기는 후속 후보이며 구현 완료로 표기하지 않는다.
+- 픽셀 제한은 메모리 측정/성능 보장이 아니다. 브라우저별 한도, 매우 큰 DOM/텍스트/전체 캡처 지연, 10/50/100/300 그래프 실측은 Phase 6에서 확인한다. 내보내기 도중 닫으면 결과를 버리지만 이미 시작한 렌더 계산을 즉시 취소하지는 않는다.
+- 노드 안의 UI에서 이미 생략된 제목/메모는 그대로 표시한다. 출력은 기존 노드/라벨 겹침을 해결하지 않는다. PDF는 이미지여서 검색/선택이 안 되며 배율에 따라 품질/용량이 달라진다.
+- 실제 drag pointer로 새 자산 drop, Safari/Firefox/Edge, 실제 휴대폰 터치, 스크린리더, 배포 환경 검증은 남는다. drop 이벤트와 그룹/Undo는 통합 테스트로 확인했다.
+- 브라우저별 즐겨찾기/최근 사용이며 탭 간 실시간 동기화는 없다. localStorage를 지우면 초기화된다. Vite Store HMR 보존 및 기존 도구 보안 경고는 그대로 남는다.
+
+### 변경 파일
+
+- 자산/상태: src/data/assets.ts, types/graph.ts, utils/assetPresentation.ts, graphValidation.ts, store/useAssetPreferences.ts(신규), components/Sidebar.tsx, ArchitectureCanvas.tsx.
+- 출력: src/components/ExportDialog.tsx(신규), utils/exportDiagram.ts(신규), imagePdf.ts(신규), App.tsx, EditorToolbar.tsx, styles.css.
+- 회귀: src/components/assetLibrary.test.tsx, canvasDrop.test.tsx, ExportDialog.test.tsx, utils/exportDiagram.test.ts(모두 신규), App.test.tsx, components/editor.test.tsx.
+- 문서/라이선스/근거: AGENTS.md, PROJECT.md, README.md, docs/PROGRESS.md, docs/DECISIONS.md, docs/ASSET_LICENSES.md, docs/licenses/lucide.txt, docs/screenshots/phase5-*.
+
+## Phase 6 구현 및 검증 (2026-10-16)
+
+### 실제 구현과 문서 비교
+
+시작 시 Phase 5 변경이 커밋되지 않은 상태였으며 그대로 보존했다. 기존 127개 테스트가 통과했다. 대량 정렬은 bundled ELK가 메인 스레드에서 실행되고 취소는 오래된 결과 폐기만 가능했다. 10/50/100/300 성능 원자료·수치 목표·Worker 검증은 없어서 Phase 6 미완료 기록과 일치했다.
+
+### 구현과 측정
+
+- chain/dense 10/50/100/300 고정 fixture, 별도 production 측정 페이지와 Node core 측정, 메타데이터/중앙값/p95/max/JS heap/long task 원자료 추가. 측정 패널은 정상 앱 build에서 제외. 재현 명령과 전체 전후 표·목표·미달은 [성능 보고서](benchmarks/README.md)에 기록했다.
+- ELK API/Worker 지연 로드, 취소 버튼과 Worker 종료, 오류/messageerror/30초 제한 후 재시작. 취소는 fallback/Undo/현재 그래프를 변경하지 않는다. 이전 Worker의 늦은 오류 및 초기화 중 취소도 처리한다. Worker 미지원 환경은 지연 bundled fallback.
+- Map 조회, 경로가 없는 edge 배열과 미변경 node 참조 보존, node/edge memo, App nodeCount selector. 선택/측정만 바뀌면 URL 서명/압축을 생략하고 이동/resize 종료 후 debounce한다. URL/JSON v1·기존 DEFLATE/Base64 형식 및 legacy 회귀 유지.
+- 200개 초과 연결의 표시 애니메이션 생략. 노드/연결 접근 이름과 한국어 React Flow 키보드/live 안내. 표시 전용 파생 값이며 JSON/URL에 필드를 추가하지 않는다.
+- 출력 CSS 속성 복사를 템플릿에 필요한 목록으로 제한하고 현재 화면 clone에서 화면 밖 요소를 제외한다. 교차선/큰 그룹/marker와 전체 출력/한도/실패 보존은 유지한다. 초기 시각 점검에서 아이콘 정렬 누락을 발견해 grid/place-items를 추가하고 실제 PNG를 다시 저장해 확인했다.
+- dense300 browser drag p95 104.1→58.4ms, 현재 PNG7893.4→595.7ms, 전체 PNG8114.6→2742.9ms. 선택 p95는145.4→155ms로 개선되지 않았다. 정상 앱 초기 JS1970.46→542.16KB(gzip613.34→173.06KB). Worker/API/fallback 추가 파일과 첫 정렬 지연의 교환을 명시했다.
+- chain100 전체 PNG7192.7ms의 악화는 반복1555.9/1494.8/7156.7ms로 편차가 재현됐다. 전체 PNG≤6000ms 목표는 모든 표본에서 달성하지 못했으며 해결 완료로 표시하지 않는다. 다른 진단 목표는 이번 환경의 final 표에서 통과했다. 메모리는 GC 의존 JS 스냅샷이며 peak/native/retained 측정이 아니다.
+
+### 검증
+
+- 자동화: **13개 파일 143개 테스트**. 기존 127개 보존, Worker lazy/reuse/error/messageerror/cancel/init취소/timeout/restart, 300노드 참조/단일Undo, route 일회 무효화, UI 전용 변경과 저장 변경 구분, 8종 fixture URL/JSON 왕복과 percentile, 테마 minified 색상 대비/명칭 회귀 추가. 출력 marker/화면 밖 label/CSS 속성 회귀 보강.
+- 실제 production Chromium: Enter 노드 선택→방향키5px 이동→Delete 삭제→Undo복원→이동Undo, Worker 정렬 적용. dense300 JSON 파일 가져오기/확인→300노드888연결→정렬 즉시취소→원래 grid 위치 유지. 긴 URL 경고도 표시됐다. 취소 버튼이 기본 자동 정렬 버튼으로 돌아오는 것을 확인했다.
+- 실제 출력: phase6-full.png 3530×1474 투명 PNG를 다운로드하여 로컬에서 열었다. 그룹·한글·아이콘 중앙 정렬·7개 라벨/화살표를 확인했다. Phase 5의 SVG/PDF 실제 검증은 이전 근거로 보존하며 Phase 6에서 두 형식을 새로 다운로드하지 않았다. 공통 clone/CSS 경로와 SVG/PDF 구조 회귀는 자동 검사했다.
+- 접근성: dark/light 표시된 조작 요소 이름 누락0, 주요 네 쌍 색상 대비 dark 최소7.66/light 최소5.93. production CSS의 #fff 단축 색상 때문에 검사 오류가 난 것을 고치고 회귀를 추가했다. 전체 WCAG/스크린리더 검사로 확대 해석하지 않는다.
+- lint, strict TypeScript/production build, 전체 테스트, format:check와 diff whitespace 검사를 통과했다. 빌드의 500KB 경고는 유지되며 새 의존성/lock 변경은 없다. 도구 보안 경고의 새 audit는 수행하지 않았다.
+
+### 남은 문제와 범위
+
+- 간헐적 전체 PNG 약7초 및 대량 선택/드래그 지연. 모든 상황 60fps/메모리 상한을 보장하지 않는다. 렌더 도중 닫기는 결과만 버리며 강제 계산 중단은 지원하지 않는다. SVG foreignObject/단일 이미지PDF 제한도 유지한다.
+- Firefox/Safari/Edge, 실제 터치/포인터 자산 drop/스크린리더, OS reduced-motion 실동작은 미검증. Chromium 키보드·명칭·주요 대비와 기존 반응형 검증을 근거로 범위를 한정한다. UI 자동화 파일선택/다운로드 호출이 수분간 응답을 지연시킨 경우가 있었으며 앱 PNG 타이밍과 구분한다.
+- Vite Store HMR 시 메모리 상태 초기화는 남는다. 편집 URL로 새로고침하면 복원되는 것을 확인했으며 개발 HMR 보존 기능을 추가하지 않았다. 이전 Phase 5 변경도 함께 커밋되지 않은 상태로 보존했다.
+- 원격 배포/Pages Worker 경로/Actions는 이번 범위에 포함하지 않았다. 배포 완료로 기록하지 않는다.
+
+### 변경 파일
+
+- 정렬/성능: src/utils/layoutEngine.ts(신규), layoutGraph.ts, graphEditing.ts, edgeUtils.ts, persistenceChanges.ts(신규), store/useGraphStore.ts, hooks/useGraphPersistence.ts, App.tsx.
+- UI/출력: components/ArchitectureCanvas.tsx, EditorToolbar.tsx, CustomNodes/ArchitectureNodeCard.tsx, GroupNodeCard.tsx, CustomEdges/ArchitectureEdge.tsx, utils/exportDiagram.ts.
+- 측정/회귀: src/benchmarks/*, benchmarks/index.html, scripts/create-benchmark-fixtures.mjs, vite.benchmark.config.ts, vitest.benchmark.config.ts, utils/layoutEngine.test.ts, phase6.test.ts, exportDiagram.test.ts, package.json, tsconfig.node.json, eslint.config.js, .gitignore/.prettierignore.
+- 문서/근거: AGENTS.md, PROJECT.md, README.md, docs/PROGRESS.md, docs/DECISIONS.md, docs/benchmarks/*, screenshots/phase6-cancel.png, phase6-full.png.
+
+## 다음 작업 — Phase 7
+
+사용자 문서/화면 예시/아키텍처/소개를 정리하고 Actions의 npm ci→lint→test→build gate를 추가한다. 권한/Pages 설정과 실제 배포 주소에서 편집·URL 공유/복원·JSON/출력·Worker 정렬/취소·Undo/Redo를 검증한다. 미검증 브라우저와 PNG 지연의 후속 검증 범위도 유지한다.
 
 ## 전체 단계
 
-Phase 0 분석/문서 완료 → Phase 1 안정화/검증 기반 완료 → Phase 2 UI 완료 → Phase 3 편집 확장/명시 범위 검증 완료 → Phase 4 정렬/데이터·명시 범위 검증 완료 → Phase 5 자산/출력 대기 → Phase 6 성능/E2E 대기 → Phase 7 문서/배포 검증 대기.
+Phase 0 분석/문서 완료 → Phase 1 안정화/검증 기반 완료 → Phase 2 UI 완료 → Phase 3 편집 확장 완료 → Phase 4 정렬/데이터 완료 → Phase 5 자산/출력·명시 범위 검증 완료 → Phase 6 측정/최적화·명시 범위 검증 완료(전체 PNG 시간 목표 일부 미달) → Phase 7 문서/배포 검증 대기.

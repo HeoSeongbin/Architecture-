@@ -120,3 +120,38 @@
 - 외부 hashchange: 검증 후 현재 주소를 복구하고 현재 문서가 있으면 교체 확인창을 연다. 취소/오류는 작업을 유지한다. 승인 시 replaceGraph로 교체하여 Undo 가능하게 한다. 탐색 때문에 취소한 debounce가 미저장 상태로 남지 않도록 최신 작업도 flush한다.
 - 샘플/새 문서/Import: 현재 그래프가 있으면 native modal dialog로 확인하고 키보드 편집을 막는다. 파일 상한을 읽기 전에 검사하고 요청 번호 및 읽기 전후 signature로 오래된 읽기를 폐기한다. 파일 검증 실패 시 교체하지 않는다.
 - 제한: 새 URL로 전체 페이지 이동/브라우저 종료의 복구는 주소와 JSON 백업에 의존한다. 개발 HMR Store 초기화 상태 보존은 별도 개선 후보다. localStorage에 다이어그램을 추가 저장하지 않는다.
+
+## ADR-013 — 자산 확장과 지역 라이브러리 설정
+
+- 날짜: 2026-10-16
+- 결정: 기존 20개 kind/그룹을 유지하고 대표 자산 12개를 추가한다. architectureNodeKinds로 TypeScript와 입력 검증 허용 목록을 공유하고 allAssets/getAsset으로 검색/클릭/drag 데이터를 관리한다. 임의 drop payload의 label/isGroup을 신뢰하지 않고 등록된 kind의 template만 사용한다. 잘못된 JSON/drop은 그래프를 바꾸지 않는다.
+- 아이콘: 기존 Lucide 일반 아이콘을 재사용하고 공급자 공식 로고를 추가하지 않는다. 설치된 lucide-react 1.18.0 LICENSE와 Feather MIT 부분까지 docs/licenses/lucide.txt에 보존하고 ASSET_LICENSES에 출처를 기록한다. 추가 의존성/원격 이미지가 없다.
+- UI 상태: 즐겨찾기와 최근 사용은 작은 별도 preferences Store이며 그래프 Store를 분할하지 않는다. 브라우저 localStorage의 architecture-editor-assets-v1에 종류만 저장한다. 최근 목록은 실제 클릭/드래그 추가 시 갱신, 중복 제거/최대 8개/최신순이며 Undo로 지우지 않는다. 즐겨찾기 변경은 편집 히스토리·URL·JSON을 바꾸지 않는다.
+- 실패/호환성: 읽기 시 중복/삭제된 종류를 걸러내고 저장 실패 시 메모리 상태를 유지하며 안내한다. 탭 간 실시간 동기화는 제공하지 않는다. URL/JSON 버전 1과 기존 구조/압축을 유지하며 신규 kind는 Phase 5 이상 소비자가 필요하다. 기존 fixture/자산은 계속 복원한다.
+
+## ADR-014 — 복제본 캡처와 단계적 이미지 출력
+
+- 날짜: 2026-10-16
+- 대안: 라이브 viewport를 이동하고 복원, 별도 그래프 렌더러 재작성, React Flow DOM 복제본 캡처.
+- 결정: 화면 밖 비상호작용 DOM 복제본을 같은 테마 아래 배치하고 html-to-image를 재사용한다. 현재 화면은 viewport를 보존, 전체 영역은 실제 노드/그룹/엣지/라벨 DOM rect를 줌·이동 역변환하여 계산하고 64px 여백을 더한다. 모든 노드가 DOM에 있는 현재 React Flow 설정이 전제다. 격자/미니맵/버튼/핸들/선택/resize UI는 제외한다.
+- 잘림 수정: 최초 실제 PNG에서 fractional 글자/테두리 치수 때문에 라벨이 말줄임표가 됨을 발견했다. 출력 복제본의 라벨을 320px 안에서 줄바꿈하고 약간의 반올림 여백을 주며 전체 영역을 재측정한다. 원본 카드의 생략된 제목/메모를 확장하는 기능은 아니다.
+- 한도/실패: PNG/PDF 배율 1–4, 최대 한 변 8192px 및 16Mi픽셀을 할당 전에 검사한다. SVG는 1배 논리 크기다. 전체 복제본 재측정 후 다시 검사하며 실제 canvas 크기와 결과 blob도 확인한다. 생성 실패/닫기 시 host를 제거하고 교체/닫기 때 object URL을 해제한다. 생성 중 닫으면 나중 결과를 표시하지 않는다. 계산을 강제 취소하는 엔진은 아니며 상한 이하 성공도 보장하지 않는다.
+- 형식: PNG는 RGBA, SVG는 html-to-image foreignObject 기반 브라우저 이미지, PDF는 JPEG를 넣은 단일 페이지 PDF 1.4다. PDF 출력은 DOM canvas에 렌더된 한글을 보존하며 텍스트 검색/선택은 없다. CSS px×0.75의 MediaBox와 byte 단위 xref를 작성하고 strict 파싱/Poppler 렌더로 검증한다. 새 PDF 의존성을 넣지 않는다.
+- 다운로드: 파일 생성 후 크기/미리보기와 명시적 파일 링크를 제공한다. 파일이 저장됐다고 자동으로 주장하지 않는다. 실제 Chromium downloadMedia 경로로 세 형식 저장을 확인했다. SVG의 Office 등 문서 앱 호환, PDF 다중 페이지/벡터화는 별도 후속 범위다.
+- 불변성: 그래프/선택/viewport/history를 바꾸지 않으며 URL/JSON 계약도 유지한다. 현재 화면은 화면 밖 요소를 포함하지 않는다. 기존 레이아웃의 겹침은 출력 기능이 해소하지 않는다.
+
+## ADR-015 — 측정에 따른 참조 보존과 ELK Worker (2026-10-16)
+
+- 근거: dense300 core 선택30회22.02ms/drag30회34.86ms, 브라우저 drag p95 104.1ms 및 메인 초기 JS1970.46KB를 측정했다. 엣지 전체 재생성과 E×N 조회, 매 선택/드래그의 서명 계산, 정렬 메인 스레드 실행을 우선 개선했다.
+- 선택: Map 조회와 변경 없는 참조 보존, 카드/엣지 memo, App 노드 개수 selector, UI 상태 변경은 저장 fast path로 제외. 드래그 종료 후 debounce 시점에만 서명/압축. 경로가 실제로 있으면 이동 첫 회에 제거하며 history 단위는 유지한다.
+- 정렬: 공식 elk-api와 worker.min을 지연 로드한다. Vite ?url asset의 classic Worker로 ELK의 message protocol을 그대로 사용한다. 취소/오류/messageerror/30초 timeout은 Worker를 종료하고 generation 및 pending 요청을 무효화한다. 취소 오류는 fallback 배치를 적용하지 않는다. 늦은 이전 Worker 오류는 새 Worker에 영향을 주지 않는다. Worker 없는 Node 환경은 bundled 엔진을 지연 사용한다.
+- 교환: 초기 JS542.16KB로 감소하지만 Worker1593.71KB/API4.44KB 요청과 첫 정렬 지연이 생긴다. fallback chunk1432.24KB도 배포한다. 총 배포 크기 감소나 모든 정렬 속도 개선을 주장하지 않는다. 다른 브라우저/Pages의 Worker 로드는 Phase 7 검증 대상이다.
+- 호환: URL/JSON 압축·버전·노드/엣지 필드는 그대로다. 표시 이름/애니메이션 생략은 Canvas 파생 값으로만 적용한다. 200연결 초과 애니메이션 중단은 저장 데이터에 넣지 않는다.
+
+## ADR-016 — 출력 비용 제한과 검증 범위 (2026-10-16)
+
+- 근거: baseline dense300 현재/전체 PNG 약7.9/8.1초. html-to-image가 모든 자손의 수백 CSS 속성을 복사하는 비용과 화면 밖 clone이 병목이었다.
+- 선택: 앱 노드/엣지 템플릿에서 사용하는 CSS 속성 목록을 명시한다. flex/grid 정렬(place-items 포함), 폰트/줄바꿈, SVG stroke/marker/transform 등을 보존한다. 현재 화면만 clone의 viewport 밖 요소를32px 여유로 제외하고 교차하는 선/큰 그룹/marker 정의는 보존한다. 전체 출력 경계/16MP/8192px 정책은 유지한다. 템플릿 CSS를 확장하면 출력 목록과 실제 출력도 함께 검증한다.
+- 결과: dense300 현재PNG595.7ms/전체2742.9ms, 그러나 chain100은7192.7ms이고 반복에도7156.7ms가 재현된다. 편차를 숨기지 않고 원자료/진단 목표/미달을 docs/benchmarks에 기록한다. JS heap 스냅샷은 native/peak/retained 메모리 지표가 아니다.
+- 접근성: 노드/연결 이름과 React Flow 한국어 키보드 안내, 주요 테마 대비/조작 이름 검사를 추가한다. production minifier가 #ffffff를 #fff로 줄이는 것을 발견해 색상 검사가 두 형식을 처리하게 하고 회귀 테스트를 추가했다. 명칭/토큰 검사만으로 WCAG 전체 준수를 주장하지 않는다.
+- 범위: 측정 도구는 별도 Vite entry/config이고 정상 build에서 제외한다. CI 시간 assertion은 기기 차이로 불안정하므로 기능 회귀와 수치 보고를 분리한다. GitHub Actions/배포 및 다른 엔진 검증은 Phase 7이다.
