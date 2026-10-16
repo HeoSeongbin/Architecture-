@@ -2,7 +2,7 @@
 
 ## 목적과 범위
 
-기존 Serverless Architecture Diagram Editor를 개발자 포트폴리오에 공개할 수 있는 아키텍처 편집기로 점진적으로 개선한다. 시스템·서버·DB·네트워크·클라우드를 브라우저에서 설계하고 URL/파일로 공유한다. 백엔드, 계정, 서버 저장소를 추가하지 않는다. Phase 0–6을 진행했으며 현재 구현/검증 상태와 다음 실행 범위는 진행 문서를 따른다. 완료/검증 상태와 다음 단계는 docs/PROGRESS.md를 기준으로 한다.
+기존 Serverless Architecture Diagram Editor를 개발자 포트폴리오에 공개할 수 있는 아키텍처 편집기로 점진적으로 개선한다. 시스템·서버·DB·네트워크·클라우드를 브라우저에서 설계하고 URL/파일로 공유한다. 백엔드, 계정, 서버 저장소를 추가하지 않는다. Phase 0–7의 명시 범위를 진행했으며 현재 구현/검증 상태와 후속 범위는 진행 문서를 따른다. 완료/검증 상태와 다음 단계는 docs/PROGRESS.md를 기준으로 한다.
 
 ## 기준 아키텍처와 현재 구현
 
@@ -84,7 +84,7 @@ PNG는 현재 영역과 전체 영역, 배율/배경/투명/고해상도, 메모
 
 ## 배포 전략과 최종 완료
 
-GitHub Pages 정적 배포, 현재 Vite base `/Architecture-/`와 hash 공유를 유지한다. 기존 `.github/workflows/deploy.yml`은 npm install → build → Pages 배포만 수행한다. Phase 7에 npm ci → lint → test → typecheck/build → Pages 업로드/배포로 개선한다. 저장소 권한/Pages 설정과 실제 배포 URL을 확인한다. 편집, 복사 링크 재접속, JSON/PNG, 정렬, Undo/Redo를 배포 환경에서 검증해야 완료다. 현재 배포 상태는 미확인이다.
+GitHub Pages 정적 배포, Vite base `/Architecture-/`와 hash 공유를 유지한다. `.github/workflows/deploy.yml`은 Phase7에서 npm ci → lint → test → format:check → build(strict TS) → Pages 업로드/배포로 개선했다. 공개 배포 주소와 실제 편집, 복사 링크 재접속, JSON/PNG, 정렬/취소, Undo/Redo를 확인했다. 저장소 Settings 권한을 임의로 바꾸지 않으며 비공개 설정 화면을 확인했다고 주장하지 않는다. 검증 커밋/run과 제한은 PROGRESS를 따른다.
 
 최종적으로 전체 Phase의 검증 근거, 사용자 문서/화면 예시, 포트폴리오 소개, 알려진 제한을 공개한다. 테스트하지 않은 기능이나 원격 배포를 성공 처리하지 않는다.
 

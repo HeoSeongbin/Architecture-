@@ -2,6 +2,8 @@
 
 배포 주소: https://heoseongbin.github.io/Architecture-/
 
+2026-10-16: ae728a9의 [실제 Actions 실행](https://github.com/HeoSeongbin/Architecture-/actions/runs/38855415803)에서 모든 품질 검사와 build/deploy가 성공했다. 실제 Pages의 편집·공유/새로고침·JSON 저장/가져오기/Undo·PNG 파일·300노드 Worker 취소/재시작 검증은 PROGRESS에 기록했다. 이후 문서만 바뀐 커밋과 이 기능 검증 커밋을 구분한다.
+
 Vite base `/Architecture-/`와 URL hash 공유를 유지한다. Pages는 저장소 Settings → Pages → Source가 GitHub Actions인 구성이 필요하다. 권한 설정을 임의로 바꾸지 않는다.
 
 ## workflow

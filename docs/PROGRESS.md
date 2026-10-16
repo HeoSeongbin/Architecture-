@@ -4,9 +4,9 @@
 
 ## 현재 Phase
 
-Phase 0–6 구현 및 아래 명시 범위의 자동화/브라우저 검증 완료. 다음 단계는 Phase 7 문서/배포 검증이다. Phase 6 성능 원자료와 전체 PNG 시간 목표 일부 미달은 docs/benchmarks에 기록했다. PNG/SVG/PDF는 실제 파일 저장과 출력 검증을 진행했지만 실제 휴대폰 터치·다른 브라우저·배포 검증은 완료하지 않았다.
+Phase 0–7의 아래 명시 범위 구현 및 자동화/브라우저 검증 완료. Phase7 품질 검사와 실제 Pages 배포, 편집/URL/JSON/PNG/Worker 취소·재시작을 확인했다. Phase6 전체 PNG 시간 목표 일부 미달은 docs/benchmarks에 기록했다. 다른 브라우저·실제 휴대폰 터치·스크린리더는 미검증이며 후속 범위다. 실행 주소: https://heoseongbin.github.io/Architecture-/
 
-Phase 3·4는 `38a99a5`로 커밋하여 origin/main에 push했다. Phase 5는 해당 HEAD의 깨끗한 작업 폴더에서 시작했고 Phase 6은 그 변경을 보존하여 진행했다. Phase 5·6 변경은 사용자 요청에 따라 이번 커밋에 함께 포함한다. 원격 반영 여부는 Git 이력으로 확인한다. PROJECT.md가 기능 명세이며 다음 실행도 AGENTS/PROJECT/PROGRESS/DECISIONS를 먼저 읽는다.
+Phase3·4는38a99a5, Phase5·6은51d450c로 커밋/push했다. Phase7 구현은f59abdf, CI lock 수정은ae728a9로 반영했고 run38855415803의 build/deploy success를 확인했다. 이후 검증 기록/화면 문서 커밋은 기능 코드 변경과 구분한다. 다음 실행도 AGENTS/PROJECT/PROGRESS/DECISIONS를 먼저 읽는다.
 
 ## 분석 기준과 구조
 
@@ -307,7 +307,7 @@ Phase 3·4는 `38a99a5`로 커밋하여 origin/main에 push했다. Phase 5는 �
 - 측정/회귀: src/benchmarks/*, benchmarks/index.html, scripts/create-benchmark-fixtures.mjs, vite.benchmark.config.ts, vitest.benchmark.config.ts, utils/layoutEngine.test.ts, phase6.test.ts, exportDiagram.test.ts, package.json, tsconfig.node.json, eslint.config.js, .gitignore/.prettierignore.
 - 문서/근거: AGENTS.md, PROJECT.md, README.md, docs/PROGRESS.md, docs/DECISIONS.md, docs/benchmarks/*, screenshots/phase6-cancel.png, phase6-full.png.
 
-## 다음 작업 — Phase 7
+## Phase 7 착수 기준
 
 사용자 문서/화면 예시/아키텍처/소개를 정리하고 Actions의 npm ci→lint→test→build gate를 추가한다. 권한/Pages 설정과 실제 배포 주소에서 편집·URL 공유/복원·JSON/출력·Worker 정렬/취소·Undo/Redo를 검증한다. 미검증 브라우저와 PNG 지연의 후속 검증 범위도 유지한다.
 
@@ -323,16 +323,27 @@ Phase 3·4는 `38a99a5`로 커밋하여 origin/main에 push했다. Phase 5는 �
 ### 확인한 결과
 
 - 기존 배포본51d450c: 샘플8노드7연결, 한글 이름 변경, Undo/Redo, 링크 복사 성공 안내와 clipboard 링크 새 탭 복원/새로고침, ELK 정렬 적용(React좌표40,110→92,274), 브라우저 error 로그0. fallback 안내가 아닌 적용 완료를 확인했다.
-- 로컬 수정본: JSON 백업 링크에서 실제 architecture-diagram-2026-10-16.json 저장, version1/8노드/7연결 파싱 확인. App22개 회귀 통과. 새 배포본/출력/모바일/전체 검사 결과는 배포 검증 후 추가한다.
+- 로컬 수정본: JSON 백업 링크에서 실제 architecture-diagram-2026-10-16.json 저장, version1/8노드/7연결 파싱 확인. App22개 및 전체13파일143개 회귀, lint/strict TS/build/format/diff whitespace 통과. 390×844에서 JSON 백업 링크 포함 document width=scrollWidth=390px, 임시 viewport 복원. 증거 phase7-mobile.png.
 
-### 원격 검증 대기
+### 새 workflow와 실제 배포 검증
 
-새 workflow와 JSON 보완의 원격 반영/Actions 실행 및 배포 smoke가 남아 있다. 이 섹션의 대기 상태를 실제 검증 후 갱신한다. 다른 브라우저/실제 터치/스크린리더/간헐적 PNG 지연과 기존 chunk·도구 보안 경고는 계속 공개한다.
+- [run38855415803](https://github.com/HeoSeongbin/Architecture-/actions/runs/38855415803), HEADae728a9: build/deploy 모두success. npm ci/Lint/Test/Check formatting/Build/Configure Pages/Upload artifact 단계 success를 API로 확인했다. 품질 검사 실패 시 deploy 미실행도 첫 실패 run으로 확인했다. PR/수동 이벤트는 workflow 조건을 검토했으며 별도 PR 생성/수동 실행은 하지 않았다.
+- 새 Pages 배포본 reload 후 JSON 백업 링크가 blob:https://heoseongbin.github.io/...임을 확인하고 실제 파일 저장. 파싱 결과 version1/8노드/7연결/한글 이름 '배포 검증 React'. 이 파일을 Pages에서 가져와 확인 모달→교체, 원래40,110 위치와 한글 복원→Undo로 정렬 후92,274 위치 복원.
+- Pages에서 dense300 JSON을 가져온 뒤 300노드/888연결 확인. 정렬→즉시취소 후 모든 노드의 data-id/DOM transform 배열이 동일함을 비교했고 자동 정렬 버튼이 다시 활성화됨을 확인했다. 다시 정렬하면 모든 위치 배열이 변경되고 정상 버튼으로 돌아오며 error 로그0. Undo도 실행했다. 요청 세대 폐기만이 아닌 실제 Worker 재시작 흐름을 검증했다.
+- 실제 Pages 전체 PNG1689×423px/약62.6KiB 파일 저장 후 로컬에서 열어 한글·아이콘·라벨·화살표 확인. 증거 phase7-pages-full.png. 출력 파일은 동일 출력 코드의51d450c 배포본에서 생성했으며 Phase7은 JSON 저장과 CI만 변경했다. SVG/PDF를 Pages에서 새로 다운로드한 것으로 기록하지 않는다. 기존 Phase5 로컬 실제 파일·Phase6 공통 출력 회귀 근거를 유지한다.
+- 새 배포본 편집기와 JSON 링크 화면 phase7-pages-editor.png. 실제 원격 사이트를 사용자 탭으로 유지했다. 원래 localhost 사용자 탭은 교체하지 않았다.
+- JSON data URL 자동 다운로드 감지의 장시간 timeout은 관측 한계로 남기고 Blob 링크의 실제 저장 성공을 별도 근거로 삼는다. Settings 비공개 화면은 확인/변경하지 않았다. 성공한 workflow 배포와 HTTP 사이트 동작으로 Pages 활성 상태를 확인했다.
 
 ### 첫 원격 검사 실패와 수정
 
-f59abdf를 push한 run38854733158은 npm ci 단계에서 실패했고 배포는 실행하지 않았다. 로그의 npm11.19.0은 lock의 root optional peer @emnapi/core/runtime1.11.3 누락을 EUSAGE로 거부했다. 로컬 npm11.6.2의 별도 clean install은 통과하여 버전 차이를 확인했다. npm11.19로 lock만 재생성해 누락 항목과 peer metadata를 보완했고 기존 패키지 버전은 모두 유지되는지 비교했다. 임시 폴더에서 새 npm의 clean install을 확인한 뒤 원격 검사를 다시 진행한다. install로 CI gate를 우회하지 않는다.
+f59abdf를 push한 run38854733158은 npm ci 단계에서 실패했고 배포는 실행하지 않았다. 로그의 npm11.19.0은 lock의 root optional peer @emnapi/core/runtime1.11.3 누락을 EUSAGE로 거부했다. 로컬 npm11.6.2의 별도 clean install은 통과하여 버전 차이를 확인했다. npm11.19로 lock만 재생성해 누락 항목과 peer metadata를 보완했고 기존 패키지 버전은 모두 유지되는지 비교했다. 임시 폴더에서 새 npm의 clean install327패키지 성공 후 삭제했고 ae728a9로 원격 재검사/배포도 통과했다. install로 CI gate를 우회하지 않았다.
+
+### 변경 파일 / 남은 문제 / 다음 작업
+
+- .github/workflows/deploy.yml, package-lock.json, src/App.tsx, src/App.test.tsx, src/styles.css, AGENTS.md/PROJECT.md/README.md, docs/PROGRESS.md/DECISIONS.md, docs/ARCHITECTURE.md/DEPLOYMENT.md/SHOWCASE.md와 phase7 screenshots.
+- 다른 브라우저/실제 터치/포인터 자산drop/스크린리더/reduced-motion 실동작, 전체 PNG 약7초 편차, Vite Store HMR 보존, SVG foreignObject/이미지PDF 제한은 후속 과제다. 기존 500KB chunk/도구 의존성 경고, Actions의 checkout/setup-node v4 Node20 deprecation 경고(강제Node24 실행)는 남는다. 경고를 오류 없이 숨기거나 무관한 전면 업그레이드를 하지 않았다.
+- 추가 Phase를 임의로 시작하지 않는다. 후속 우선순위는 다중 브라우저·접근성 실기기 검증, PNG 긴 작업 프로파일링, 도구 보안/Actions 런타임 업데이트 검토다. 성능/전체 접근성 준수 목표를 모두 달성한 것으로 확대하지 않는다.
 
 ## 전체 단계
 
-Phase 0 분석/문서 완료 → Phase 1 안정화/검증 기반 완료 → Phase 2 UI 완료 → Phase 3 편집 확장 완료 → Phase 4 정렬/데이터 완료 → Phase 5 자산/출력·명시 범위 검증 완료 → Phase 6 측정/최적화·명시 범위 검증 완료(전체 PNG 시간 목표 일부 미달) → Phase 7 문서/배포 검증 대기.
+Phase 0 분석/문서 완료 → Phase 1 안정화/검증 기반 완료 → Phase 2 UI 완료 → Phase 3 편집 확장 완료 → Phase 4 정렬/데이터 완료 → Phase 5 자산/출력·명시 범위 검증 완료 → Phase 6 측정/최적화·명시 범위 검증 완료(전체 PNG 시간 목표 일부 미달) → Phase 7 문서/품질 gate/실제 Pages·명시 smoke 검증 완료.

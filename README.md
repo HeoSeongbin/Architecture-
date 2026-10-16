@@ -836,6 +836,8 @@ npm run format:check
 - OS clipboard/탭 간 다이어그램 복사는 후속 개발 대상입니다. 즐겨찾기/최근 사용은 브라우저별 설정입니다.
 - 빌드의 큰 번들 경고와 Tailwind 3 도구 체인의 의존성 보안 경고가 남아 있습니다. 상세 내용은 docs/PROGRESS.md를 참조하세요.
 
-Vite의 GitHub Pages base는 `/Architecture-/`입니다. [실제 편집기](https://heoseongbin.github.io/Architecture-/)를 사용할 수 있습니다. `.github/workflows/deploy.yml`은 npm ci → lint → test → format:check → build(strict TypeScript 포함)를 거쳐 배포하도록 구성합니다. main 대상 PR은 검사만 실행합니다. 배포본 검증과 새 workflow의 실제 실행 결과는 [진행 상태](docs/PROGRESS.md), 설정/문제 해결은 [배포 문서](docs/DEPLOYMENT.md)를 확인하세요.
+Vite의 GitHub Pages base는 `/Architecture-/`입니다. [실제 편집기](https://heoseongbin.github.io/Architecture-/)를 사용할 수 있습니다. `.github/workflows/deploy.yml`은 npm ci → lint → test → format:check → build(strict TypeScript 포함)를 거쳐 배포합니다. main 대상 PR은 검사만 실행합니다. Phase7에서 실제 Actions 검사·배포 성공과 한글 편집/URL 복원/JSON 저장·가져오기/PNG/Worker 정렬·취소·재시작을 확인했습니다. 상세 결과는 [진행 상태](docs/PROGRESS.md), 설정/문제 해결은 [배포 문서](docs/DEPLOYMENT.md)를 확인하세요.
+
+![실제 Pages 편집기와 JSON 백업 링크](docs/screenshots/phase7-pages-editor.png)
 
 관리 문서: [요구사항](PROJECT.md), [작업 규칙](AGENTS.md), [진행 상태](docs/PROGRESS.md), [기술 결정](docs/DECISIONS.md).
