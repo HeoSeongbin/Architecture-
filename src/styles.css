@@ -210,6 +210,16 @@ body {
 }
 
 /* Editor surfaces share tokens with React Flow. Graph data contains no theme state. */
+.json-backup-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.json-backup-actions a {
+  color: var(--editor-accent);
+  text-decoration: underline;
+}
 :root {
   --editor-bg: #eef2f6;
   --editor-surface: #ffffff;
@@ -535,6 +545,7 @@ button:disabled {
   margin-top: 10px;
 }
 .editor-footer {
+  flex-wrap: wrap;
   display: flex;
   align-items: center;
   justify-content: space-between;

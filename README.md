@@ -5,6 +5,10 @@ URL 하나로 공유할 수 있는 서버리스 아키텍처 다이어그램 편
 
 이 README는 코드를 직접 분석하지 않아도 프로젝트의 목적, 기술 스택, 주요 기능, 상태 저장 방식, 파일 구조, 실행 방법을 이해할 수 있도록 작성되었습니다.
 
+[편집기 실행](https://heoseongbin.github.io/Architecture-/) · [아키텍처](docs/ARCHITECTURE.md) · [배포/복구](docs/DEPLOYMENT.md) · [프로젝트 소개](docs/SHOWCASE.md)
+
+처음 사용한다면 **샘플 → 노드 선택/이름 변경 → 자동 정렬 → 링크 복사** 순서로 시작하세요. `파일 → JSON 내보내기`로 편집 가능한 백업을, `PNG / SVG / PDF 내보내기`로 문서용 출력을 만듭니다. 공유 링크에는 다이어그램 데이터가 들어 있으므로 공개할 내용만 전달하세요.
+
 ## 1. 프로젝트 목적
 
 이 프로젝트는 시스템/서버리스/인프라 아키텍처를 빠르게 그려 보고, 결과물을 URL 또는 파일로 공유하기 위한 웹 기반 다이어그램 에디터입니다.
@@ -185,6 +189,8 @@ interface MinifiedGraph {
 - MongoDB
 - Redis
 
+- MySQL / SQLite
+
 #### Server
 
 - Docker
@@ -192,24 +198,28 @@ interface MinifiedGraph {
 - WSL Ubuntu
 - Node.js
 - Python
+- Kubernetes / Linux
 
 #### Application
 
 - Spring Boot
 - ASP.NET
 - React
+- FastAPI / Next.js
 
 #### Cloud
 
 - AWS
 - Azure
 - Google Cloud
+- AWS EC2 / S3 / Lambda, Azure Storage
 
 #### Network
 
 - Load Balancer
 - Firewall
 - Message Queue
+- API Gateway / Apache Kafka
 
 Sidebar 기능:
 
@@ -396,6 +406,8 @@ ELK layered로 중첩 그룹 내부부터 배치하고 자식의 실제 크기�
 #### JSON Export
 
 `파일 → JSON 내보내기`에서 현재 그래프 상태를 `.json` 파일로 다운로드합니다.
+
+자동 다운로드가 차단되면 하단의 **JSON 백업 다운로드** 링크로 다시 저장하세요. 이 링크는 마지막 내보내기 시점의 내용입니다. 이후 수정분은 다시 내보내야 포함됩니다. 닫기 버튼은 링크만 숨기며 그래프를 변경하지 않습니다.
 
 파일명 형식:
 
@@ -824,6 +836,6 @@ npm run format:check
 - OS clipboard/탭 간 다이어그램 복사는 후속 개발 대상입니다. 즐겨찾기/최근 사용은 브라우저별 설정입니다.
 - 빌드의 큰 번들 경고와 Tailwind 3 도구 체인의 의존성 보안 경고가 남아 있습니다. 상세 내용은 docs/PROGRESS.md를 참조하세요.
 
-Vite의 GitHub Pages base는 `/Architecture-/`로 설정되어 있으며 `.github/workflows/deploy.yml`에 기존 build/deploy workflow가 있습니다. 현재 workflow에는 lint/test gate가 없습니다. 실제 배포 주소/Pages 활성화 여부는 확인되지 않았고, workflow 개선과 배포 환경 검증은 Phase 7에서 진행합니다.
+Vite의 GitHub Pages base는 `/Architecture-/`입니다. [실제 편집기](https://heoseongbin.github.io/Architecture-/)를 사용할 수 있습니다. `.github/workflows/deploy.yml`은 npm ci → lint → test → format:check → build(strict TypeScript 포함)를 거쳐 배포하도록 구성합니다. main 대상 PR은 검사만 실행합니다. 배포본 검증과 새 workflow의 실제 실행 결과는 [진행 상태](docs/PROGRESS.md), 설정/문제 해결은 [배포 문서](docs/DEPLOYMENT.md)를 확인하세요.
 
 관리 문서: [요구사항](PROJECT.md), [작업 규칙](AGENTS.md), [진행 상태](docs/PROGRESS.md), [기술 결정](docs/DECISIONS.md).

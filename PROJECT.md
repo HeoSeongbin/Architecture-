@@ -88,6 +88,8 @@ GitHub Pages 정적 배포, 현재 Vite base `/Architecture-/`와 hash 공유를
 
 최종적으로 전체 Phase의 검증 근거, 사용자 문서/화면 예시, 포트폴리오 소개, 알려진 제한을 공개한다. 테스트하지 않은 기능이나 원격 배포를 성공 처리하지 않는다.
 
+Phase 7에서 아키텍처/운영·복구/소개 문서를 docs/ARCHITECTURE.md, DEPLOYMENT.md, SHOWCASE.md로 제공한다. CI는 main push/수동 배포와 main PR 검사를 구분하며 npm ci→lint→test→format→build gate를 사용한다. 실제 배포본과 새 workflow 실행 결과는 PROGRESS의 Phase7을 따른다. JSON 저장은 v1 payload를 Blob URL로 제공하고 마지막 생성본의 재시도 링크를 유지한다. 저장 형식/URL 압축은 그대로다.
+
 ## Phase 4 구현 계약 (2026-10-15)
 
 URL `{v:1,n,e}` / JSON `{version:1,nodes,edges}`를 쓰며 버전 생략은 legacy로 읽는다. node 1,000 / edge 5,000 / 문자열 10,000자 / 부모 32단계 / JSON·해제 데이터 5 MiB / 압축 hash 입력 1 MiB 제한. 전체 공유 URL 8,000자 경고, 64,000자 자동 저장·복사 중단 및 JSON 안내. 기존 DEFLATE/Base64 치환과 선택 필드 유지. ADR-010–012와 PROGRESS의 Phase 4 검증/제한을 따른다.

@@ -155,3 +155,16 @@
 - 결과: dense300 현재PNG595.7ms/전체2742.9ms, 그러나 chain100은7192.7ms이고 반복에도7156.7ms가 재현된다. 편차를 숨기지 않고 원자료/진단 목표/미달을 docs/benchmarks에 기록한다. JS heap 스냅샷은 native/peak/retained 메모리 지표가 아니다.
 - 접근성: 노드/연결 이름과 React Flow 한국어 키보드 안내, 주요 테마 대비/조작 이름 검사를 추가한다. production minifier가 #ffffff를 #fff로 줄이는 것을 발견해 색상 검사가 두 형식을 처리하게 하고 회귀 테스트를 추가했다. 명칭/토큰 검사만으로 WCAG 전체 준수를 주장하지 않는다.
 - 범위: 측정 도구는 별도 Vite entry/config이고 정상 build에서 제외한다. CI 시간 assertion은 기기 차이로 불안정하므로 기능 회귀와 수치 보고를 분리한다. GitHub Actions/배포 및 다른 엔진 검증은 Phase 7이다.
+
+## ADR-017 — 배포 전 품질 검사와 권한 범위 (2026-10-16)
+
+- 기존 main push/수동 Pages 배포를 유지하고 main 대상 PR 검사도 추가한다. 설치는 npm ci로 lock 기준 재현성을 확보한다. lint/Vitest/format/build(strict TS)를 통과한 artifact만 deploy한다.
+- PR은 configure-pages/Pages artifact 업로드/deploy를 실행하지 않는다. contents:read와 Pages 구성 조회용 pages:read는 build, pages:write/id-token:write는 deploy job에만 둔다. 기존 배포 권한을 확대하지 않는다. production 실행은 같은 concurrency 그룹, PR은 번호별 그룹을 사용한다.
+- Node24와 기존 Actions major를 유지한다. 무관한 도구 업그레이드/전체 재작성은 하지 않는다. 새 workflow의 실제 원격 성공과 기존 배포본 브라우저 검증은 각각 기록한다.
+- URL/JSON v1/압축/base는 변경하지 않는다. 정상 build는 benchmark entry를 포함하지 않는다.
+
+## ADR-018 — JSON 파일 저장 재시도와 수명 (2026-10-16)
+
+- 배포 검증 중 기존 data URL 자동 다운로드를 자동화 도구가 감지하지 못했고 실제 저장 파일도 확인되지 않았다. 이것을 모든 브라우저의 실패로 단정하지 않되, 큰 JSON의 data URL 팽창과 브라우저 저장 차이를 줄이기 위해 PNG와 같은 Blob URL을 사용한다.
+- 기존 자동 다운로드 요청을 유지하고 하단에 명시적인 JSON 백업 다운로드 링크를 남긴다. 링크는 생성 시점의 snapshot이며 이후 수정분을 포함하지 않음을 tooltip/README로 설명한다. 새 export에서 교체, 링크 닫기/컴포넌트 unmount에서 URL을 해제한다. 현재 그래프/히스토리/공유 데이터에는 영향을 주지 않는다.
+- 실제 로컬 Blob 링크 저장에 성공하여 v1/8노드/7연결을 확인했다. 테스트는 자동 다운로드 payload, 재시도 href/파일명, 이후 편집으로 snapshot 불변, 닫기와 URL 해제를 검증한다. 원격 반영 후 실제 Pages에서도 별도로 확인한다.

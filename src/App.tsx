@@ -29,6 +29,13 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [layoutBusy, setLayoutBusy] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [jsonBackup, setJsonBackup] = useState<{ href: string; filename: string } | null>(null);
+  useEffect(
+    () => () => {
+      if (jsonBackup) URL.revokeObjectURL(jsonBackup.href);
+    },
+    [jsonBackup],
+  );
   const [activePanel, setActivePanel] = useState<'assets' | 'inspector' | null>(null);
   const { theme, toggleTheme } = useEditorTheme();
   const narrow = useNarrowScreen();
@@ -175,7 +182,8 @@ export default function App() {
       const graph = toExportableGraph({ nodes: useGraphStore.getState().nodes, edges: useGraphStore.getState().edges });
       const json = JSON.stringify({ version: DATA_VERSION, ...graph }, null, 2);
       const filename = `architecture-diagram-${new Date().toISOString().slice(0, 10)}.json`;
-      const dataUrl = `data:application/json;charset=utf-8,${encodeURIComponent(json)}`;
+      const dataUrl = URL.createObjectURL(new Blob([json], { type: 'application/json;charset=utf-8' }));
+      setJsonBackup({ href: dataUrl, filename });
       triggerDownload(dataUrl, filename);
       notify('JSON 다운로드를 요청했습니다. 브라우저 다운로드 목록을 확인하세요.');
     } catch {
@@ -336,6 +344,20 @@ export default function App() {
             <p role={feedback.error ? 'alert' : 'status'} className={feedback.error ? 'feedback-error' : ''}>
               {feedback.text}
             </p>
+          )}
+          {jsonBackup && (
+            <span className="json-backup-actions">
+              <a
+                href={jsonBackup.href}
+                download={jsonBackup.filename}
+                title="마지막으로 생성한 JSON 백업을 저장합니다. 이후 편집은 새로 내보내세요."
+              >
+                JSON 백업 다운로드
+              </a>
+              <button className="secondary-button" aria-label="JSON 백업 링크 닫기" onClick={() => setJsonBackup(null)}>
+                닫기
+              </button>
+            </span>
           )}
           <span className="diagram-stats">
             노드 {nodeCount} · 연결 {edges.length} · URL {persistence.urlSize.toLocaleString()}자

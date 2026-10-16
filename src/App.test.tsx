@@ -124,8 +124,17 @@ it('does not lose a pending URL save when external navigation is invalid', () =>
   expect(screen.getByRole('alert')).toHaveTextContent('현재 작업은 유지');
 });
 
-it('exports versioned JSON and warns about links above the sharing threshold', () => {
-  render(<App />);
+it('exports versioned JSON, retains a retry link and releases its Blob URL', async () => {
+  let exported!: Blob;
+  const revoke = vi.fn();
+  vi.stubGlobal('URL', {
+    createObjectURL: vi.fn((blob: Blob) => {
+      exported = blob;
+      return 'blob:json-backup';
+    }),
+    revokeObjectURL: revoke,
+  });
+  const { unmount } = render(<App />);
   fireEvent.click(screen.getByRole('button', { name: '샘플' }));
   let download = '';
   const capture = (event: MouseEvent) => {
@@ -138,14 +147,23 @@ it('exports versioned JSON and warns about links above the sharing threshold', (
   fireEvent.click(screen.getByText('파일', { selector: 'summary' }));
   fireEvent.click(screen.getByRole('button', { name: 'JSON 내보내기' }));
   document.removeEventListener('click', capture);
-  const graph = JSON.parse(decodeURIComponent(download.split(',')[1]));
+  const graph = JSON.parse(await exported.text());
   expect(graph.version).toBe(1);
   expect(graph.nodes).toHaveLength(8);
+  const backup = screen.getByRole('link', { name: 'JSON 백업 다운로드' });
+  expect(backup.getAttribute('href')).toBe(download);
+  expect(backup.getAttribute('download')).toMatch(/^architecture-diagram-.*\.json$/);
+  act(() => useGraphStore.getState().updateNodeData('react', { label: '백업 이후 편집' }));
+  expect(backup.getAttribute('href')).toBe(download);
+  fireEvent.click(screen.getByRole('button', { name: 'JSON 백업 링크 닫기' }));
+  expect(screen.queryByRole('link', { name: 'JSON 백업 다운로드' })).not.toBeInTheDocument();
+  expect(revoke).toHaveBeenCalledWith('blob:json-backup');
   const encode = vi.spyOn(urlUtils, 'encodeStateToUrl').mockReturnValue('a'.repeat(8100));
   act(() => useGraphStore.getState().updateNodeData('react', { label: '공유 주의' }));
   act(() => vi.advanceTimersByTime(400));
   expect(screen.getByRole('alert')).toHaveTextContent('8,000자');
   encode.mockRestore();
+  unmount();
 });
 beforeEach(() => {
   vi.useFakeTimers();

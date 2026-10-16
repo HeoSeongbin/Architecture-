@@ -311,6 +311,24 @@ Phase 3·4는 `38a99a5`로 커밋하여 origin/main에 push했다. Phase 5는 �
 
 사용자 문서/화면 예시/아키텍처/소개를 정리하고 Actions의 npm ci→lint→test→build gate를 추가한다. 권한/Pages 설정과 실제 배포 주소에서 편집·URL 공유/복원·JSON/출력·Worker 정렬/취소·Undo/Redo를 검증한다. 미검증 브라우저와 PNG 지연의 후속 검증 범위도 유지한다.
 
+## Phase 7 구현 및 검증 (2026-10-16)
+
+### 비교와 변경
+
+- 시작 HEAD51d450c, 작업 폴더 깨끗함. 기존 workflow는 npm install/build/deploy만 수행했다. GitHub 공개 Actions API에서 해당 커밋 배포 run38852496379의 success를 확인했고 실제 https://heoseongbin.github.io/Architecture-/ 편집기를 열었다. Pages가 미확인이라는 기존 문서를 실제 관측으로 보완한다. Settings의 비공개 화면은 변경하지 않았다.
+- Actions를 npm ci→lint→test→format:check→build(strict TS)→Pages로 변경. main PR은 검사만 하고 main push/수동 실행만 배포한다. build pages:read, deploy pages:write/id-token:write로 권한을 제한한다. 새 workflow 원격 실행은 아래 최신 결과로 구분한다.
+- README 빠른 시작/실제 링크/자산 목록/백업 재시도 안내, docs/ARCHITECTURE.md 데이터 흐름·책임/호환성, DEPLOYMENT.md 검사·배포·smoke·복구, SHOWCASE.md 소개·실제 화면·검증 근거 추가.
+- 실제 data URL JSON 자동 다운로드의 저장을 확인하지 못하고 도구 감지가 timeout됐다. Blob URL과 명시적인 마지막 JSON 백업 링크로 보완했다. 기존 자동 요청은 유지하고 닫기/교체/unmount에서 URL을 해제한다. 링크는 export 시점 snapshot이며 현재 그래프/Undo/URL을 바꾸지 않는다. v1 JSON과 URL 압축/base는 그대로다.
+
+### 확인한 결과
+
+- 기존 배포본51d450c: 샘플8노드7연결, 한글 이름 변경, Undo/Redo, 링크 복사 성공 안내와 clipboard 링크 새 탭 복원/새로고침, ELK 정렬 적용(React좌표40,110→92,274), 브라우저 error 로그0. fallback 안내가 아닌 적용 완료를 확인했다.
+- 로컬 수정본: JSON 백업 링크에서 실제 architecture-diagram-2026-10-16.json 저장, version1/8노드/7연결 파싱 확인. App22개 회귀 통과. 새 배포본/출력/모바일/전체 검사 결과는 배포 검증 후 추가한다.
+
+### 원격 검증 대기
+
+새 workflow와 JSON 보완의 원격 반영/Actions 실행 및 배포 smoke가 남아 있다. 이 섹션의 대기 상태를 실제 검증 후 갱신한다. 다른 브라우저/실제 터치/스크린리더/간헐적 PNG 지연과 기존 chunk·도구 보안 경고는 계속 공개한다.
+
 ## 전체 단계
 
 Phase 0 분석/문서 완료 → Phase 1 안정화/검증 기반 완료 → Phase 2 UI 완료 → Phase 3 편집 확장 완료 → Phase 4 정렬/데이터 완료 → Phase 5 자산/출력·명시 범위 검증 완료 → Phase 6 측정/최적화·명시 범위 검증 완료(전체 PNG 시간 목표 일부 미달) → Phase 7 문서/배포 검증 대기.
