@@ -344,6 +344,10 @@ f59abdf를 push한 run38854733158은 npm ci 단계에서 실패했고 배포는 
 - 다른 브라우저/실제 터치/포인터 자산drop/스크린리더/reduced-motion 실동작, 전체 PNG 약7초 편차, Vite Store HMR 보존, SVG foreignObject/이미지PDF 제한은 후속 과제다. 기존 500KB chunk/도구 의존성 경고, Actions의 checkout/setup-node v4 Node20 deprecation 경고(강제Node24 실행)는 남는다. 경고를 오류 없이 숨기거나 무관한 전면 업그레이드를 하지 않았다.
 - 추가 Phase를 임의로 시작하지 않는다. 후속 우선순위는 다중 브라우저·접근성 실기기 검증, PNG 긴 작업 프로파일링, 도구 보안/Actions 런타임 업데이트 검토다. 성능/전체 접근성 준수 목표를 모두 달성한 것으로 확대하지 않는다.
 
+### README 기술 선택 설명 보완 (2026-10-16)
+
+사용자 요청으로 README의 기술 스택을 현재 package/config/source와 비교했다. React18+ 표기를 실제19.2.7로 바로잡고 언어·UI·편집/상태/압축/출력 라이브러리·개발/검사/배포 도구의 사용 이유와 구현 효과를 추가했다. 기존 구조의 도입 배경을 비교 평가 이력으로 꾸미지 않고 현재 설계 적합성으로 설명했다. 기존 Phase6 측정 근거를 링크하고 압축/Base64, 타입/런타임 검증, 브라우저/Node 역할 및 출력 제약을 구분했다. 실행 코드·의존성·URL/JSON 형식 변경은 없다. lint/143개 테스트/strict TS·build/format:check/diff whitespace 검사 통과, 기존 큰 chunk 경고 유지. 새 브라우저 검증·배포는 수행하지 않았으며 이 문서 변경은 사용자 요청에 따라 커밋에 포함한다.
+
 ## 전체 단계
 
 Phase 0 분석/문서 완료 → Phase 1 안정화/검증 기반 완료 → Phase 2 UI 완료 → Phase 3 편집 확장 완료 → Phase 4 정렬/데이터 완료 → Phase 5 자산/출력·명시 범위 검증 완료 → Phase 6 측정/최적화·명시 범위 검증 완료(전체 PNG 시간 목표 일부 미달) → Phase 7 문서/품질 gate/실제 Pages·명시 smoke 검증 완료.
